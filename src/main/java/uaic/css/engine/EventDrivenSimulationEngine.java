@@ -7,7 +7,7 @@ import uaic.css.model.event.Event;
 import uaic.css.model.event.EventType;
 import uaic.css.model.process.Process;
 import uaic.css.model.process.ProcessState;
-import uaic.css.model.system.*;
+import uaic.css.model.simulation.*;
 import uaic.css.scheduler.Scheduler;
 
 import java.util.ArrayList;

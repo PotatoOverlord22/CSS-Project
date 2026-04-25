@@ -1,12 +1,12 @@
 package uaic.css.memory;
 
-import uaic.css.model.system.EvictionResult;
+import uaic.css.model.simulation.EvictionResult;
 import uaic.css.model.event.Event;
 import uaic.css.model.event.EventType;
 import uaic.css.model.process.Process;
 import uaic.css.model.process.ProcessState;
-import uaic.css.model.system.EntryType;
-import uaic.css.model.system.ExecutionLogEntry;
+import uaic.css.model.simulation.EntryType;
+import uaic.css.model.simulation.ExecutionLogEntry;
 
 import java.util.List;
 import java.util.PriorityQueue;

@@ -1,6 +1,6 @@
 package uaic.css.memory;
 
-import uaic.css.model.system.EvictionResult;
+import uaic.css.model.simulation.EvictionResult;
 import uaic.css.model.process.Process;
 import uaic.css.model.process.ProcessState;
 

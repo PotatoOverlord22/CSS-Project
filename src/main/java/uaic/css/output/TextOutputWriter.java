@@ -1,7 +1,7 @@
 package uaic.css.output;
 
-import uaic.css.model.system.SimulationResult;
-import uaic.css.model.system.ExecutionLogEntry;
+import uaic.css.model.simulation.SimulationResult;
+import uaic.css.model.simulation.ExecutionLogEntry;
 
 import java.io.FileWriter;
 import java.io.IOException;

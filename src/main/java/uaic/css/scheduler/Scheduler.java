@@ -1,9 +1,10 @@
 package uaic.css.scheduler;
 
 import uaic.css.memory.MemoryManager;
-import uaic.css.model.system.SchedulingDecision;
+import uaic.css.model.simulation.ReadyQueue;
+import uaic.css.model.simulation.SchedulingDecision;
 import uaic.css.model.process.Process;
-import uaic.css.model.system.Processor;
+import uaic.css.model.simulation.Processor;
 
 import java.util.ArrayList;
 import java.util.List;

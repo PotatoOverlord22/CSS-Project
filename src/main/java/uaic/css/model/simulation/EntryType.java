@@ -1,4 +1,4 @@
-package uaic.css.model.system;
+package uaic.css.model.simulation;
 
 /**
  * Types of entries in the simulation execution log.

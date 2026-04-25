@@ -1,7 +1,7 @@
 package uaic.css.model.event;
 
 import uaic.css.model.process.Process;
-import uaic.css.model.system.Processor;
+import uaic.css.model.simulation.Processor;
 
 public record Event(int time, EventType type, Process process, Processor processor) implements Comparable<Event> {
     public Event {

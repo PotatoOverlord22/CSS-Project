@@ -1,4 +1,4 @@
-package uaic.css.model.system;
+package uaic.css.model.simulation;
 
 public record ExecutionLogEntry(String label, int processorId, int startTime, int endTime, EntryType type) {
 

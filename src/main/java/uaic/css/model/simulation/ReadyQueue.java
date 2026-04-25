@@ -1,4 +1,4 @@
-package uaic.css.scheduler;
+package uaic.css.model.simulation;
 
 import uaic.css.model.process.Process;
 

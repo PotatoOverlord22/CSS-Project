@@ -1,4 +1,4 @@
-package uaic.css.model.system;
+package uaic.css.model.simulation;
 
 import uaic.css.model.process.Process;
 

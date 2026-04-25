@@ -4,7 +4,7 @@ import uaic.css.config.InputParser;
 import uaic.css.config.SimulationConfig;
 import uaic.css.engine.EventDrivenSimulationEngine;
 import uaic.css.engine.SimulationEngine;
-import uaic.css.model.system.SimulationResult;
+import uaic.css.model.simulation.SimulationResult;
 import uaic.css.model.process.Process;
 import uaic.css.output.TextOutputWriter;
 import uaic.css.ui.GanttChartPanel;

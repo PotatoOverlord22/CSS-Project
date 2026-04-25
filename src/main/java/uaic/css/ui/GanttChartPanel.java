@@ -1,7 +1,7 @@
 package uaic.css.ui;
 
-import uaic.css.model.system.SimulationResult;
-import uaic.css.model.system.ExecutionLogEntry;
+import uaic.css.model.simulation.SimulationResult;
+import uaic.css.model.simulation.ExecutionLogEntry;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;

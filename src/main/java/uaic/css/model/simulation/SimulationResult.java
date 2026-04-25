@@ -1,4 +1,4 @@
-package uaic.css.model.system;
+package uaic.css.model.simulation;
 
 import java.util.ArrayList;
 import java.util.Collections;
