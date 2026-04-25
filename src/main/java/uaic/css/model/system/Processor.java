@@ -6,13 +6,11 @@ public class Processor {
     private final int id;
     private Process currentProcess;
     private boolean busyWithSystemProcess;
-    private boolean busyWithDiskTransfer;
 
     public Processor(int id) {
         this.id = id;
         this.currentProcess = null;
         this.busyWithSystemProcess = false;
-        this.busyWithDiskTransfer = false;
     }
 
     public int getId() {
@@ -28,7 +26,7 @@ public class Processor {
     }
 
     public boolean isFree() {
-        return currentProcess == null && !busyWithSystemProcess && !busyWithDiskTransfer;
+        return currentProcess == null && !busyWithSystemProcess;
     }
 
     public boolean isBusyWithSystemProcess() {
@@ -37,14 +35,6 @@ public class Processor {
 
     public void setBusyWithSystemProcess(boolean busy) {
         this.busyWithSystemProcess = busy;
-    }
-
-    public boolean isBusyWithDiskTransfer() {
-        return busyWithDiskTransfer;
-    }
-
-    public void setBusyWithDiskTransfer(boolean busy) {
-        this.busyWithDiskTransfer = busy;
     }
 
     @Override

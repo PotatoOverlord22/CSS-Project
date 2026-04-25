@@ -124,6 +124,28 @@ public class MemoryManager {
         return new EvictionResult(toEvict, totalSaveTime);
     }
 
+    /**
+     * Checks whether enough memory can be freed (by evicting eligible processes)
+     * to load the given process. This considers currently used memory, reserved memory,
+     * and only evictable processes (not RUNNING or LOADING).
+     */
+    public boolean canFreeEnoughMemory(Process processToLoad) {
+        int memoryNeeded = processToLoad.getMemoryRequired() - getFreeMemory();
+        if (memoryNeeded <= 0) {
+            return true; // Already enough free memory
+        }
+
+        int evictableMemory = 0;
+        for (Process candidate : loadedProcesses.values()) {
+            ProcessState state = candidate.getState();
+            if (state != ProcessState.RUNNING && state != ProcessState.LOADING) {
+                evictableMemory += candidate.getMemoryRequired();
+            }
+        }
+
+        return evictableMemory >= memoryNeeded;
+    }
+
     public int getTotalMemory() {
         return totalMemory;
     }

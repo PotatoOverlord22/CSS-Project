@@ -2,8 +2,10 @@ package uaic.css.scheduler;
 
 import uaic.css.model.process.Process;
 
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.function.Predicate;
 
 public class ReadyQueue {
     private final Queue<Process> queue;
@@ -40,5 +42,35 @@ public class ReadyQueue {
 
     public boolean remove(Process process) {
         return queue.remove(process);
+    }
+
+    /**
+     * Finds and removes the first process in the queue matching the given predicate.
+     * Maintains FIFO order for remaining elements.
+     * Returns null if no matching process is found.
+     */
+    public Process removeFirstMatching(Predicate<Process> predicate) {
+        Iterator<Process> iterator = queue.iterator();
+        while (iterator.hasNext()) {
+            Process process = iterator.next();
+            if (predicate.test(process)) {
+                iterator.remove();
+                return process;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Finds the first process in the queue matching the given predicate without removing it.
+     * Returns null if no matching process is found.
+     */
+    public Process findFirst(Predicate<Process> predicate) {
+        for (Process process : queue) {
+            if (predicate.test(process)) {
+                return process;
+            }
+        }
+        return null;
     }
 }
