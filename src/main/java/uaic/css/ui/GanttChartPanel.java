@@ -72,7 +72,7 @@ public class GanttChartPanel extends JPanel {
 
     private String extractProcessName(String label) {
         // Extract process name from labels like "SysCall(P1)" → "P1", "Load P1" → "P1", "Save P1" → "P1"
-        if (label.startsWith("SysCall(") && label.endsWith(")")) {
+        if (label.startsWith("SC(") && label.endsWith(")")) {
             return label.substring(8, label.length() - 1);
         }
         if (label.startsWith("Load ")) {
