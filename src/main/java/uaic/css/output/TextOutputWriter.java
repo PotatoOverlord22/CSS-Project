@@ -1,6 +1,6 @@
 package uaic.css.output;
 
-import uaic.css.engine.SimulationResult;
+import uaic.css.model.system.SimulationResult;
 import uaic.css.model.system.ExecutionLogEntry;
 
 import java.io.FileWriter;
@@ -11,39 +11,39 @@ import java.util.List;
 
 public class TextOutputWriter {
 
-    public static void write(SimulationResult result, String filePath) {
+    public void write(SimulationResult result, String filePath) {
         assert result != null : "SimulationResult must not be null";
         assert filePath != null && !filePath.isEmpty() : "File path must not be null or empty";
 
         try (PrintWriter writer = new PrintWriter(new FileWriter(filePath))) {
             writer.println("=== Process Scheduling Simulation Results ===");
-            writer.println("Total simulation time: " + result.getTotalTime());
+            writer.println("Total simulation time: " + result.totalTime());
             writer.println();
 
             // Sort entries by start time for chronological output
-            List<ExecutionLogEntry> sorted = new ArrayList<>(result.getLogEntries());
+            List<ExecutionLogEntry> sorted = new ArrayList<>(result.logEntries());
             sorted.sort((a, b) -> {
-                int cmp = Integer.compare(a.getStartTime(), b.getStartTime());
+                int cmp = Integer.compare(a.startTime(), b.startTime());
                 if (cmp != 0) return cmp;
-                return Integer.compare(a.getProcessorId(), b.getProcessorId());
+                return Integer.compare(a.processorId(), b.processorId());
             });
 
             // Chronological event log
             writer.println("--- Chronological Log ---");
             for (ExecutionLogEntry entry : sorted) {
                 String location;
-                if (entry.getProcessorId() == -1) {
+                if (entry.processorId() == ExecutionLogEntry.DISK_PROCESSOR_ID) {
                     location = "Disk";
                 } else {
-                    location = "Processor " + entry.getProcessorId();
+                    location = "Processor " + entry.processorId();
                 }
 
                 writer.printf("[T=%d -> T=%d] %-25s on %-15s (%s)%n",
-                        entry.getStartTime(),
-                        entry.getEndTime(),
-                        entry.getLabel(),
+                        entry.startTime(),
+                        entry.endTime(),
+                        entry.label(),
                         location,
-                        entry.getType());
+                        entry.type());
             }
 
             writer.println();
@@ -51,22 +51,22 @@ public class TextOutputWriter {
             // Per-processor timeline
             writer.println("--- Per-Processor Timeline ---");
             int maxProcessorId = -1;
-            for (ExecutionLogEntry entry : result.getLogEntries()) {
-                if (entry.getProcessorId() > maxProcessorId) {
-                    maxProcessorId = entry.getProcessorId();
+            for (ExecutionLogEntry entry : result.logEntries()) {
+                if (entry.processorId() > maxProcessorId) {
+                    maxProcessorId = entry.processorId();
                 }
             }
 
             for (int pid = 0; pid <= maxProcessorId; pid++) {
                 writer.println("Processor " + pid + ":");
                 List<ExecutionLogEntry> procEntries = result.getEntriesForProcessor(pid);
-                procEntries.sort((a, b) -> Integer.compare(a.getStartTime(), b.getStartTime()));
+                procEntries.sort((a, b) -> Integer.compare(a.startTime(), b.startTime()));
                 for (ExecutionLogEntry entry : procEntries) {
                     writer.printf("  [%d-%d] %s (%s)%n",
-                            entry.getStartTime(),
-                            entry.getEndTime(),
-                            entry.getLabel(),
-                            entry.getType());
+                            entry.startTime(),
+                            entry.endTime(),
+                            entry.label(),
+                            entry.type());
                 }
                 writer.println();
             }
@@ -75,13 +75,13 @@ public class TextOutputWriter {
             List<ExecutionLogEntry> diskEntries = result.getDiskEntries();
             if (!diskEntries.isEmpty()) {
                 writer.println("Disk Operations:");
-                diskEntries.sort((a, b) -> Integer.compare(a.getStartTime(), b.getStartTime()));
+                diskEntries.sort((a, b) -> Integer.compare(a.startTime(), b.startTime()));
                 for (ExecutionLogEntry entry : diskEntries) {
                     writer.printf("  [%d-%d] %s (%s)%n",
-                            entry.getStartTime(),
-                            entry.getEndTime(),
-                            entry.getLabel(),
-                            entry.getType());
+                            entry.startTime(),
+                            entry.endTime(),
+                            entry.label(),
+                            entry.type());
                 }
             }
 

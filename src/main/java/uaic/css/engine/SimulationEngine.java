@@ -2,6 +2,7 @@ package uaic.css.engine;
 
 import uaic.css.config.SimulationConfig;
 import uaic.css.model.process.Process;
+import uaic.css.model.system.SimulationResult;
 
 import java.util.List;
 

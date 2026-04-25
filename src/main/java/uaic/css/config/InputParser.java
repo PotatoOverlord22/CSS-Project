@@ -7,9 +7,13 @@ import java.io.IOException;
 
 public class InputParser {
 
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
-    public static SimulationConfig parse(String filePath) {
+    public InputParser() {
+        this.objectMapper = new ObjectMapper();
+    }
+
+    public SimulationConfig parse(String filePath) {
         assert filePath != null && !filePath.isEmpty() : "File path must not be null or empty";
 
         try {

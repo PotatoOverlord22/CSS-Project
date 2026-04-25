@@ -1,10 +1,17 @@
 package uaic.css.scheduler;
 
+import uaic.css.memory.MemoryManager;
+import uaic.css.model.system.SchedulingDecision;
 import uaic.css.model.process.Process;
 import uaic.css.model.system.Processor;
 
+import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Round-Robin scheduler with processor affinity support.
+ * Manages the ready queue and makes scheduling decisions.
+ */
 public class Scheduler {
     private final ReadyQueue readyQueue;
 
@@ -12,19 +19,58 @@ public class Scheduler {
         this.readyQueue = new ReadyQueue();
     }
 
-    public ReadyQueue getReadyQueue() {
-        return readyQueue;
-    }
-
     public void addToReadyQueue(Process process) {
         readyQueue.enqueue(process);
     }
 
-    public Process getNextProcess() {
-        if (readyQueue.isEmpty()) {
-            return null;
+    public boolean hasReadyProcesses() {
+        return !readyQueue.isEmpty();
+    }
+
+    /**
+     * Determines which in-memory ready processes should be scheduled onto which free processors.
+     * Returns a list of (Process, Processor) assignments.
+     * Does NOT modify process/processor state — the caller is responsible for that.
+     */
+    public List<SchedulingDecision> scheduleReadyProcesses(List<Processor> processors,
+                                                           MemoryManager memoryManager) {
+        List<SchedulingDecision> decisions = new ArrayList<>();
+
+        boolean found = true;
+        while (found) {
+            found = false;
+
+            // Find the first in-memory process in the ready queue
+            Process inMemoryProcess = readyQueue.findFirst(memoryManager::isLoaded);
+            if (inMemoryProcess == null) {
+                break;
+            }
+
+            // Find a free processor (with affinity preference)
+            Processor bestProcessor = findBestProcessor(inMemoryProcess, processors);
+            if (bestProcessor == null) {
+                break;
+            }
+
+            readyQueue.remove(inMemoryProcess);
+            decisions.add(new SchedulingDecision(inMemoryProcess, bestProcessor));
+            found = true;
         }
-        return readyQueue.dequeue();
+
+        return decisions;
+    }
+
+    /**
+     * Finds the next process that needs to be loaded from disk (not currently in memory).
+     * Returns the process, or null if none found. Removes it from the ready queue.
+     */
+    public Process dequeueNextProcessNeedingLoad(MemoryManager memoryManager) {
+        Process toLoad = readyQueue.findFirst(p -> !memoryManager.isLoaded(p));
+        if (toLoad != null && memoryManager.canFreeEnoughMemory(toLoad)) {
+            readyQueue.remove(toLoad);
+            return toLoad;
+        }
+        return null;
     }
 
     /**
@@ -63,7 +109,4 @@ public class Scheduler {
         return null;
     }
 
-    public boolean hasReadyProcesses() {
-        return !readyQueue.isEmpty();
-    }
 }

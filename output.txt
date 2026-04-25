@@ -32,8 +32,8 @@ Total simulation time: 72
 [T=60 -> T=62] SysCall(P3)               on Processor 0     (SYSCALL)
 [T=62 -> T=66] SysCall(P1)               on Processor 0     (SYSCALL)
 [T=62 -> T=66] P3                        on Processor 1     (CPU_BURST)
-[T=66 -> T=70] P1                        on Processor 1     (CPU_BURST)
-[T=70 -> T=72] P1                        on Processor 1     (CPU_BURST)
+[T=66 -> T=70] P1                        on Processor 0     (CPU_BURST)
+[T=70 -> T=72] P1                        on Processor 0     (CPU_BURST)
 
 --- Per-Processor Timeline ---
 Processor 0:
@@ -51,6 +51,8 @@ Processor 0:
   [57-58] P1 (CPU_BURST)
   [60-62] SysCall(P3) (SYSCALL)
   [62-66] SysCall(P1) (SYSCALL)
+  [66-70] P1 (CPU_BURST)
+  [70-72] P1 (CPU_BURST)
 
 Processor 1:
   [15-18] P3 (CPU_BURST)
@@ -58,8 +60,6 @@ Processor 1:
   [46-50] P3 (CPU_BURST)
   [50-53] P3 (CPU_BURST)
   [62-66] P3 (CPU_BURST)
-  [66-70] P1 (CPU_BURST)
-  [70-72] P1 (CPU_BURST)
 
 Disk Operations:
   [0-3] Load P1 (DISK_LOAD)

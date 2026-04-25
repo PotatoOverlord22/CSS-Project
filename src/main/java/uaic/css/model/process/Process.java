@@ -1,9 +1,8 @@
 package uaic.css.model.process;
 
-import uaic.css.config.ProcessConfig;
-
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class Process {
     private final String name;
@@ -17,14 +16,18 @@ public class Process {
     private int remainingBurstTime;
     private int lastProcessorId;
 
-    public Process(ProcessConfig config) {
-        this.name = config.getName();
-        this.releaseTime = config.getReleaseTime();
-        this.memoryRequired = config.getMemoryRequired();
+    public Process(String name, int releaseTime, int memoryRequired, List<Integer> executionSequence) {
+        assert name != null && !name.isEmpty() : "Process name must not be null or empty";
+        assert releaseTime >= 0 : "Release time must be non-negative, got: " + releaseTime;
+        assert memoryRequired > 0 : "Memory required must be positive, got: " + memoryRequired;
+
+        this.name = name;
+        this.releaseTime = releaseTime;
+        this.memoryRequired = memoryRequired;
         this.cpuBursts = new ArrayList<>();
         this.syscallDurations = new ArrayList<>();
 
-        parseExecutionSequence(config.getExecutionSequence());
+        parseExecutionSequence(executionSequence);
 
         this.state = ProcessState.NEW;
         this.currentBurstIndex = 0;
@@ -117,6 +120,19 @@ public class Process {
 
     public boolean isTerminated() {
         return state == ProcessState.TERMINATED;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Process process = (Process) o;
+        return Objects.equals(name, process.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name);
     }
 
     @Override

@@ -3,20 +3,11 @@ package uaic.css.model.event;
 import uaic.css.model.process.Process;
 import uaic.css.model.system.Processor;
 
-public class Event implements Comparable<Event> {
-    private final int time;
-    private final EventType type;
-    private final Process process;
-    private final Processor processor;
-
-    public Event(int time, EventType type, Process process, Processor processor) {
+public record Event(int time, EventType type, Process process, Processor processor) implements Comparable<Event> {
+    public Event {
         assert time >= 0 : "Event time must be non-negative, got: " + time;
         assert type != null : "Event type must not be null";
 
-        this.time = time;
-        this.type = type;
-        this.process = process;
-        this.processor = processor;
     }
 
     public Event(int time, EventType type) {
@@ -27,29 +18,13 @@ public class Event implements Comparable<Event> {
         this(time, type, process, null);
     }
 
-    public int getTime() {
-        return time;
-    }
-
-    public EventType getType() {
-        return type;
-    }
-
-    public Process getProcess() {
-        return process;
-    }
-
-    public Processor getProcessor() {
-        return processor;
-    }
-
     @Override
     public int compareTo(Event other) {
         int timeCompare = Integer.compare(this.time, other.time);
         if (timeCompare != 0) {
             return timeCompare;
         }
-        return Integer.compare(this.type.ordinal(), other.type.ordinal());
+        return Integer.compare(this.type.getPriority(), other.type.getPriority());
     }
 
     @Override

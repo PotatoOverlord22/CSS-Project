@@ -1,31 +1,24 @@
-package uaic.css.engine;
-
-import uaic.css.model.system.ExecutionLogEntry;
+package uaic.css.model.system;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-public class SimulationResult {
-    private final List<ExecutionLogEntry> logEntries;
-    private final int totalTime;
-
+public record SimulationResult(List<ExecutionLogEntry> logEntries, int totalTime) {
     public SimulationResult(List<ExecutionLogEntry> logEntries, int totalTime) {
         this.logEntries = logEntries != null ? logEntries : new ArrayList<>();
         this.totalTime = totalTime;
     }
 
-    public List<ExecutionLogEntry> getLogEntries() {
-        return logEntries;
-    }
-
-    public int getTotalTime() {
-        return totalTime;
+    @Override
+    public List<ExecutionLogEntry> logEntries() {
+        return Collections.unmodifiableList(logEntries);
     }
 
     public List<ExecutionLogEntry> getEntriesForProcessor(int processorId) {
         List<ExecutionLogEntry> result = new ArrayList<>();
         for (ExecutionLogEntry entry : logEntries) {
-            if (entry.getProcessorId() == processorId) {
+            if (entry.processorId() == processorId) {
                 result.add(entry);
             }
         }
@@ -35,8 +28,8 @@ public class SimulationResult {
     public List<ExecutionLogEntry> getDiskEntries() {
         List<ExecutionLogEntry> result = new ArrayList<>();
         for (ExecutionLogEntry entry : logEntries) {
-            if (entry.getType() == ExecutionLogEntry.EntryType.DISK_LOAD
-                    || entry.getType() == ExecutionLogEntry.EntryType.DISK_SAVE) {
+            if (entry.type() == EntryType.DISK_LOAD
+                    || entry.type() == EntryType.DISK_SAVE) {
                 result.add(entry);
             }
         }

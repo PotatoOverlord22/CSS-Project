@@ -1,14 +1,13 @@
 package uaic.css.engine;
 
 import uaic.css.config.SimulationConfig;
+import uaic.css.memory.DiskController;
 import uaic.css.memory.MemoryManager;
 import uaic.css.model.event.Event;
 import uaic.css.model.event.EventType;
 import uaic.css.model.process.Process;
 import uaic.css.model.process.ProcessState;
-import uaic.css.model.system.ExecutionLogEntry;
-import uaic.css.model.system.Processor;
-import uaic.css.model.system.SystemCallRequest;
+import uaic.css.model.system.*;
 import uaic.css.scheduler.Scheduler;
 
 import java.util.ArrayList;
@@ -23,6 +22,7 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
     private List<Processor> processors;
     private Scheduler scheduler;
     private MemoryManager memoryManager;
+    private DiskController diskController;
     private Queue<SystemCallRequest> syscallQueue;
     private List<ExecutionLogEntry> logEntries;
     private SimulationConfig config;
@@ -32,8 +32,8 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
     // Tracks whether the system process is currently waiting for a free processor
     private boolean systemProcessWaiting;
 
-    // Disk is a single shared resource — tracks when it becomes free
-    private int diskBusyUntil;
+    // Tracks the next absolute time for a system process release (strictly periodic)
+    private int nextSystemProcessReleaseTime;
 
     // All processes for termination checking
     private List<Process> allProcesses;
@@ -50,17 +50,17 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
         this.config = config;
         this.eventQueue = new PriorityQueue<>();
         this.processors = new ArrayList<>();
+        this.memoryManager = new MemoryManager(config.memorySize(), config.diskTransferRate());
+        this.diskController = new DiskController(memoryManager);
         this.scheduler = new Scheduler();
-        this.memoryManager = new MemoryManager(config.getMemorySize(), config.getDiskTransferRate());
         this.syscallQueue = new LinkedList<>();
         this.logEntries = new ArrayList<>();
         this.currentTime = 0;
         this.lastMeaningfulTime = 0;
         this.systemProcessWaiting = false;
-        this.diskBusyUntil = 0;
         this.allProcesses = processes;
 
-        for (int i = 0; i < config.getProcessors(); i++) {
+        for (int i = 0; i < config.processors(); i++) {
             processors.add(new Processor(i));
         }
     }
@@ -70,41 +70,28 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
             eventQueue.add(new Event(process.getReleaseTime(), EventType.PROCESS_RELEASE, process));
         }
 
-        // Seed system process release events — generous estimate
-        int maxReleaseTime = 0;
-        int totalBurstTime = 0;
-        for (Process process : processes) {
-            maxReleaseTime = Math.max(maxReleaseTime, process.getReleaseTime());
-            for (int burst : process.getCpuBursts()) {
-                totalBurstTime += burst;
-            }
-            for (int syscall : process.getSyscallDurations()) {
-                totalBurstTime += syscall;
-            }
-        }
-        int estimatedEndTime = maxReleaseTime + totalBurstTime * 10;
-
-        for (int t = config.getSystemProcessPeriod(); t <= estimatedEndTime; t += config.getSystemProcessPeriod()) {
-            eventQueue.add(new Event(t, EventType.SYSTEM_PROCESS_RELEASE));
-        }
+        // Schedule only the first system process release; subsequent ones are scheduled lazily
+        nextSystemProcessReleaseTime = config.systemProcessPeriod();
+        eventQueue.add(new Event(nextSystemProcessReleaseTime, EventType.SYSTEM_PROCESS_RELEASE));
     }
 
     private void runEventLoop() {
         while (!eventQueue.isEmpty()) {
             Event event = eventQueue.poll();
-            currentTime = event.getTime();
+            currentTime = event.time();
 
             // Stop if all processes are terminated
             if (allProcessesTerminated()) {
                 break;
             }
 
-            switch (event.getType()) {
+            switch (event.type()) {
                 case PROCESS_RELEASE -> handleProcessRelease(event);
                 case TIME_SLICE_EXPIRED -> handleTimeSliceExpired(event);
                 case BURST_COMPLETED -> handleBurstCompleted(event);
                 case SYSCALL_COMPLETED -> handleSyscallCompleted(event);
                 case SYSTEM_PROCESS_RELEASE -> handleSystemProcessRelease(event);
+                case SYSTEM_PROCESS_COMPLETED -> handleSystemProcessCompleted(event);
                 case DISK_TRANSFER_COMPLETE -> handleDiskTransferComplete(event);
             }
         }
@@ -128,7 +115,7 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
     // ========== Event Handlers ==========
 
     private void handleProcessRelease(Event event) {
-        Process process = event.getProcess();
+        Process process = event.process();
         assert process != null : "PROCESS_RELEASE event must have an associated process";
 
         process.setState(ProcessState.READY);
@@ -137,8 +124,8 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
     }
 
     private void handleTimeSliceExpired(Event event) {
-        Process process = event.getProcess();
-        Processor processor = event.getProcessor();
+        Process process = event.process();
+        Processor processor = event.processor();
         assert process != null : "TIME_SLICE_EXPIRED event must have an associated process";
         assert processor != null : "TIME_SLICE_EXPIRED event must have an associated processor";
 
@@ -156,8 +143,8 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
     }
 
     private void handleBurstCompleted(Event event) {
-        Process process = event.getProcess();
-        Processor processor = event.getProcessor();
+        Process process = event.process();
+        Processor processor = event.processor();
         assert process != null : "BURST_COMPLETED event must have an associated process";
         assert processor != null : "BURST_COMPLETED event must have an associated processor";
 
@@ -176,7 +163,6 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
             process.advanceToNextBurst();
         } else {
             process.setState(ProcessState.TERMINATED);
-            // Free memory immediately — no need to save a terminated process
             if (memoryManager.isLoaded(process)) {
                 memoryManager.unloadProcess(process);
             }
@@ -186,7 +172,7 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
     }
 
     private void handleSyscallCompleted(Event event) {
-        Process process = event.getProcess();
+        Process process = event.process();
         assert process != null : "SYSCALL_COMPLETED event must have an associated process";
 
         updateLastMeaningfulTime();
@@ -200,14 +186,10 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
     }
 
     private void handleSystemProcessRelease(Event event) {
-        // Case 1: "system process done" signal (processor is attached)
-        if (event.getProcessor() != null) {
-            event.getProcessor().setBusyWithSystemProcess(false);
-            trySchedule();
-            return;
-        }
+        // Schedule the next periodic release at the exact next multiple (no drift)
+        nextSystemProcessReleaseTime += config.systemProcessPeriod();
+        eventQueue.add(new Event(nextSystemProcessReleaseTime, EventType.SYSTEM_PROCESS_RELEASE));
 
-        // Case 2: Periodic release of a new system process instance
         if (syscallQueue.isEmpty()) {
             return;
         }
@@ -220,6 +202,28 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
         }
     }
 
+    private void handleSystemProcessCompleted(Event event) {
+        Processor processor = event.processor();
+        assert processor != null : "SYSTEM_PROCESS_COMPLETED event must have an associated processor";
+
+        processor.setBusyWithSystemProcess(false);
+        trySchedule();
+    }
+
+    private void handleDiskTransferComplete(Event event) {
+        Process process = event.process();
+        assert process != null : "DISK_TRANSFER_COMPLETE event must have an associated process";
+
+        memoryManager.commitLoad(process, currentTime);
+        process.setState(ProcessState.READY);
+        scheduler.addToReadyQueue(process);
+        updateLastMeaningfulTime();
+
+        trySchedule();
+    }
+
+    // ========== System Process ==========
+
     private void executeSystemProcess(Processor processor) {
         systemProcessWaiting = false;
         processor.setBusyWithSystemProcess(true);
@@ -228,20 +232,20 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
 
         while (!syscallQueue.isEmpty()) {
             SystemCallRequest request = syscallQueue.poll();
-            int syscallEndTime = syscallStartTime + request.getDuration();
+            int syscallEndTime = syscallStartTime + request.duration();
 
             logEntries.add(new ExecutionLogEntry(
-                    "SysCall(" + request.getRequestingProcess().getName() + ")",
+                    "SysCall(" + request.requestingProcess().getName() + ")",
                     processor.getId(),
                     syscallStartTime,
                     syscallEndTime,
-                    ExecutionLogEntry.EntryType.SYSCALL
+                    EntryType.SYSCALL
             ));
 
             eventQueue.add(new Event(
                     syscallEndTime,
                     EventType.SYSCALL_COMPLETED,
-                    request.getRequestingProcess(),
+                    request.requestingProcess(),
                     processor
             ));
 
@@ -253,7 +257,7 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
         if (systemProcessEndTime > currentTime) {
             eventQueue.add(new Event(
                     systemProcessEndTime,
-                    EventType.SYSTEM_PROCESS_RELEASE,
+                    EventType.SYSTEM_PROCESS_COMPLETED,
                     null,
                     processor
             ));
@@ -262,129 +266,37 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
         }
     }
 
-    private void handleDiskTransferComplete(Event event) {
-        Process process = event.getProcess();
-        assert process != null : "DISK_TRANSFER_COMPLETE event must have an associated process";
-
-        // Commit the load — process is now actually in memory
-        memoryManager.commitLoad(process, currentTime);
-
-        // Process is now in memory, add to ready queue for normal scheduling
-        process.setState(ProcessState.READY);
-        scheduler.addToReadyQueue(process);
-        updateLastMeaningfulTime();
-
-        // Let the scheduler handle processor assignment with affinity
-        trySchedule();
-    }
-
     // ========== Scheduling ==========
 
     private void trySchedule() {
-        // First: if system process is waiting, try to give it a processor
+        // System process has higher priority
         if (systemProcessWaiting && !syscallQueue.isEmpty()) {
             Processor freeProcessor = scheduler.findFreeProcessor(processors);
             if (freeProcessor != null) {
                 executeSystemProcess(freeProcessor);
-                return;
             }
         }
 
-        // Pass 1: Schedule all in-memory processes onto free processors
-        boolean scheduled = true;
-        while (scheduled) {
-            scheduled = false;
-
-            // Find the first in-memory process in the ready queue
-            Process inMemoryProcess = scheduler.getReadyQueue().findFirst(memoryManager::isLoaded);
-            if (inMemoryProcess == null) {
-                break; // No in-memory process in ready queue
-            }
-
-            // Find a free processor (with affinity preference)
-            Processor bestProcessor = scheduler.findBestProcessor(inMemoryProcess, processors);
-            if (bestProcessor == null) {
-                break; // No free processor
-            }
-
-            // Remove from queue and schedule
-            scheduler.getReadyQueue().remove(inMemoryProcess);
-            scheduleProcessOnProcessor(inMemoryProcess, bestProcessor);
-            scheduled = true;
+        // Pass 1: Schedule in-memory ready processes onto free processors
+        List<SchedulingDecision> decisions = scheduler.scheduleReadyProcesses(processors, memoryManager);
+        for (SchedulingDecision decision : decisions) {
+            dispatchProcessOnProcessor(decision.process(), decision.processor());
         }
 
         // Pass 2: If there are still ready processes not in memory, initiate ONE disk load
         if (scheduler.hasReadyProcesses()) {
-            // Find the first not-in-memory process
-            Process toLoad = scheduler.getReadyQueue().findFirst(p -> !memoryManager.isLoaded(p));
-            if (toLoad != null && memoryManager.canFreeEnoughMemory(toLoad)) {
-                scheduler.getReadyQueue().remove(toLoad);
-                initiateMemoryLoad(toLoad);
+            Process toLoad = scheduler.dequeueNextProcessNeedingLoad(memoryManager);
+            if (toLoad != null) {
+                diskController.initiateMemoryLoad(toLoad, currentTime, logEntries, eventQueue);
             }
         }
-    }
-
-    // ========== Memory & Disk ==========
-
-    private void initiateMemoryLoad(Process process) {
-        process.setState(ProcessState.LOADING);
-
-        // Plan eviction if needed
-        MemoryManager.EvictionResult eviction = memoryManager.planEviction(process);
-
-        // All disk operations go through the single disk — sequential
-        int diskTime = Math.max(currentTime, diskBusyUntil);
-
-        // Evict LRU processes (save to disk sequentially)
-        for (Process toEvict : eviction.getProcessesToEvict()) {
-            int transferTime = memoryManager.calculateTransferTime(toEvict);
-
-            logEntries.add(new ExecutionLogEntry(
-                    "Save " + toEvict.getName(),
-                    -1,
-                    diskTime,
-                    diskTime + transferTime,
-                    ExecutionLogEntry.EntryType.DISK_SAVE
-            ));
-
-            memoryManager.unloadProcess(toEvict);
-            diskTime += transferTime;
-        }
-
-        // Load the new process from disk
-        int loadTime = memoryManager.calculateTransferTime(process);
-
-        logEntries.add(new ExecutionLogEntry(
-                "Load " + process.getName(),
-                -1,
-                diskTime,
-                diskTime + loadTime,
-                ExecutionLogEntry.EntryType.DISK_LOAD
-        ));
-
-        // Reserve memory space (commit happens when transfer completes)
-        memoryManager.reserveSpace(process.getMemoryRequired());
-
-        int loadEndTime = diskTime + loadTime;
-        diskBusyUntil = loadEndTime;
-
-        // Schedule disk transfer completion — no processor attached
-        eventQueue.add(new Event(loadEndTime, EventType.DISK_TRANSFER_COMPLETE, process));
     }
 
     // ========== Process Execution ==========
 
-    private void scheduleProcessOnProcessor(Process process, Processor processor) {
-        // Double-check processor is still free
-        if (!processor.isFree()) {
-            Processor altProcessor = scheduler.findBestProcessor(process, processors);
-            if (altProcessor == null) {
-                process.setState(ProcessState.READY);
-                scheduler.addToReadyQueue(process);
-                return;
-            }
-            processor = altProcessor;
-        }
+    private void dispatchProcessOnProcessor(Process process, Processor processor) {
+        assert processor.isFree() : "Processor " + processor.getId()
+                + " must be free when dispatching process " + process.getName();
 
         process.setState(ProcessState.RUNNING);
         processor.setCurrentProcess(process);
@@ -392,7 +304,7 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
         memoryManager.updateLastUsedTime(process, currentTime);
 
         int burstTime = process.getRemainingBurstTime();
-        int timeSlice = config.getTimeSlice();
+        int timeSlice = config.timeSlice();
 
         if (burstTime <= timeSlice) {
             int endTime = currentTime + burstTime;
@@ -401,7 +313,7 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
                     processor.getId(),
                     currentTime,
                     endTime,
-                    ExecutionLogEntry.EntryType.CPU_BURST
+                    EntryType.CPU_BURST
             ));
             process.setRemainingBurstTime(0);
             eventQueue.add(new Event(endTime, EventType.BURST_COMPLETED, process, processor));
@@ -412,7 +324,7 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
                     processor.getId(),
                     currentTime,
                     endTime,
-                    ExecutionLogEntry.EntryType.CPU_BURST
+                    EntryType.CPU_BURST
             ));
             process.setRemainingBurstTime(burstTime - timeSlice);
             eventQueue.add(new Event(endTime, EventType.TIME_SLICE_EXPIRED, process, processor));

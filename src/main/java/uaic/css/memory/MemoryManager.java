@@ -1,10 +1,11 @@
 package uaic.css.memory;
 
+import uaic.css.model.system.EvictionResult;
 import uaic.css.model.process.Process;
 import uaic.css.model.process.ProcessState;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -13,8 +14,7 @@ public class MemoryManager {
     private final int diskTransferRate;
     private int usedMemory;
     private int reservedMemory; // memory reserved for in-flight disk loads
-    private final Map<String, Process> loadedProcesses;
-    private final Map<String, Integer> lastUsedTime;
+    private final Map<Process, Integer> loadedProcesses; // Process -> lastUsedTime
 
     public MemoryManager(int totalMemory, int diskTransferRate) {
         assert totalMemory > 0 : "Total memory must be positive, got: " + totalMemory;
@@ -24,12 +24,11 @@ public class MemoryManager {
         this.diskTransferRate = diskTransferRate;
         this.usedMemory = 0;
         this.reservedMemory = 0;
-        this.loadedProcesses = new HashMap<>();
-        this.lastUsedTime = new HashMap<>();
+        this.loadedProcesses = new LinkedHashMap<>();
     }
 
     public boolean isLoaded(Process process) {
-        return loadedProcesses.containsKey(process.getName());
+        return loadedProcesses.containsKey(process);
     }
 
     /**
@@ -49,24 +48,22 @@ public class MemoryManager {
         assert !isLoaded(process) : "Process " + process.getName() + " is already loaded in memory";
 
         reservedMemory -= process.getMemoryRequired();
-        loadedProcesses.put(process.getName(), process);
+        loadedProcesses.put(process, currentTime);
         usedMemory += process.getMemoryRequired();
-        lastUsedTime.put(process.getName(), currentTime);
     }
 
     public void unloadProcess(Process process) {
         assert isLoaded(process) : "Process " + process.getName() + " is not loaded in memory";
 
-        loadedProcesses.remove(process.getName());
+        loadedProcesses.remove(process);
         usedMemory -= process.getMemoryRequired();
-        lastUsedTime.remove(process.getName());
     }
 
     public void updateLastUsedTime(Process process, int time) {
         if (!isLoaded(process)) {
             return; // Process may have been evicted; silently skip
         }
-        lastUsedTime.put(process.getName(), time);
+        loadedProcesses.put(process, time);
     }
 
     public int getFreeMemory() {
@@ -89,22 +86,20 @@ public class MemoryManager {
             return new EvictionResult(new ArrayList<>(), 0);
         }
 
-        List<Map.Entry<String, Integer>> sortedByLRU = new ArrayList<>(lastUsedTime.entrySet());
+        // Sort loaded processes by last-used time (LRU first)
+        List<Map.Entry<Process, Integer>> sortedByLRU = new ArrayList<>(loadedProcesses.entrySet());
         sortedByLRU.sort(Map.Entry.comparingByValue());
 
         List<Process> toEvict = new ArrayList<>();
         int freedMemory = 0;
         int totalSaveTime = 0;
 
-        for (Map.Entry<String, Integer> entry : sortedByLRU) {
+        for (Map.Entry<Process, Integer> entry : sortedByLRU) {
             if (freedMemory >= memoryNeeded) {
                 break;
             }
 
-            Process candidate = loadedProcesses.get(entry.getKey());
-            if (candidate == null) {
-                continue; // Defensive: skip if not found
-            }
+            Process candidate = entry.getKey();
 
             // Don't evict processes that are currently running or being loaded
             ProcessState state = candidate.getState();
@@ -136,7 +131,7 @@ public class MemoryManager {
         }
 
         int evictableMemory = 0;
-        for (Process candidate : loadedProcesses.values()) {
+        for (Process candidate : loadedProcesses.keySet()) {
             ProcessState state = candidate.getState();
             if (state != ProcessState.RUNNING && state != ProcessState.LOADING) {
                 evictableMemory += candidate.getMemoryRequired();
@@ -152,23 +147,5 @@ public class MemoryManager {
 
     public int getUsedMemory() {
         return usedMemory;
-    }
-
-    public static class EvictionResult {
-        private final List<Process> processesToEvict;
-        private final int totalSaveTime;
-
-        public EvictionResult(List<Process> processesToEvict, int totalSaveTime) {
-            this.processesToEvict = processesToEvict;
-            this.totalSaveTime = totalSaveTime;
-        }
-
-        public List<Process> getProcessesToEvict() {
-            return processesToEvict;
-        }
-
-        public int getTotalSaveTime() {
-            return totalSaveTime;
-        }
     }
 }
