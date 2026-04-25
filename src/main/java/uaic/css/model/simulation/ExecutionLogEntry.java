@@ -8,10 +8,16 @@ public record ExecutionLogEntry(String label, int processorId, int startTime, in
     public static final int DISK_PROCESSOR_ID = -1;
 
     public ExecutionLogEntry {
-        assert label != null && !label.isEmpty() : "Label must not be null or empty";
-        assert startTime >= 0 : "Start time must be non-negative, got: " + startTime;
-        assert endTime > startTime : "End time (" + endTime + ") must be greater than start time (" + startTime + ")";
-
+        if (label == null || label.isEmpty()) {
+            throw new IllegalArgumentException("Label must not be null or empty");
+        }
+        if (startTime < 0) {
+            throw new IllegalArgumentException("Start time must be non-negative, got: " + startTime);
+        }
+        if (endTime <= startTime) {
+            throw new IllegalArgumentException(
+                    "End time (" + endTime + ") must be greater than start time (" + startTime + ")");
+        }
     }
 
     public int getDuration() {

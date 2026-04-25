@@ -17,9 +17,15 @@ public class Process {
     private int lastProcessorId;
 
     public Process(String name, int releaseTime, int memoryRequired, List<Integer> executionSequence) {
-        assert name != null && !name.isEmpty() : "Process name must not be null or empty";
-        assert releaseTime >= 0 : "Release time must be non-negative, got: " + releaseTime;
-        assert memoryRequired > 0 : "Memory required must be positive, got: " + memoryRequired;
+        if (name == null || name.isEmpty()) {
+            throw new IllegalArgumentException("Process name must not be null or empty");
+        }
+        if (releaseTime < 0) {
+            throw new IllegalArgumentException("Release time must be non-negative, got: " + releaseTime);
+        }
+        if (memoryRequired <= 0) {
+            throw new IllegalArgumentException("Memory required must be positive, got: " + memoryRequired);
+        }
 
         this.name = name;
         this.releaseTime = releaseTime;
@@ -36,11 +42,19 @@ public class Process {
     }
 
     private void parseExecutionSequence(List<Integer> sequence) {
-        assert sequence != null : "Execution sequence must not be null";
-        assert sequence.size() % 2 == 1 : "Execution sequence must have an odd number of elements (alternating CPU bursts and syscalls)";
+        if (sequence == null) {
+            throw new IllegalArgumentException("Execution sequence must not be null");
+        }
+        if (sequence.size() % 2 != 1) {
+            throw new IllegalArgumentException(
+                    "Execution sequence must have an odd number of elements (alternating CPU bursts and syscalls)");
+        }
 
         for (int i = 0; i < sequence.size(); i++) {
-            assert sequence.get(i) > 0 : "All execution sequence values must be positive, found: " + sequence.get(i) + " at index " + i;
+            if (sequence.get(i) <= 0) {
+                throw new IllegalArgumentException(
+                        "All execution sequence values must be positive, found: " + sequence.get(i) + " at index " + i);
+            }
 
             if (i % 2 == 0) {
                 cpuBursts.add(sequence.get(i));
@@ -107,7 +121,9 @@ public class Process {
     }
 
     public int getCurrentSyscallDuration() {
-        assert hasSyscallAfterCurrentBurst() : "No syscall after current burst index " + currentBurstIndex;
+        if (!hasSyscallAfterCurrentBurst()) {
+            throw new IllegalStateException("No syscall after current burst index " + currentBurstIndex);
+        }
         return syscallDurations.get(currentBurstIndex);
     }
 
@@ -124,8 +140,10 @@ public class Process {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         Process process = (Process) o;
         return Objects.equals(name, process.name);
     }

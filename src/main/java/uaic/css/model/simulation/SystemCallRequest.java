@@ -4,9 +4,12 @@ import uaic.css.model.process.Process;
 
 public record SystemCallRequest(Process requestingProcess, int duration) {
     public SystemCallRequest {
-        assert requestingProcess != null : "Requesting process must not be null";
-        assert duration > 0 : "Syscall duration must be positive, got: " + duration;
-
+        if (requestingProcess == null) {
+            throw new IllegalArgumentException("Requesting process must not be null");
+        }
+        if (duration <= 0) {
+            throw new IllegalArgumentException("Syscall duration must be positive, got: " + duration);
+        }
     }
 
     @Override

@@ -15,12 +15,16 @@ public class ReadyQueue {
     }
 
     public void enqueue(Process process) {
-        assert process != null : "Cannot enqueue a null process";
+        if (process == null) {
+            throw new IllegalArgumentException("Cannot enqueue a null process");
+        }
         queue.add(process);
     }
 
     public Process dequeue() {
-        assert !isEmpty() : "Cannot dequeue from an empty ready queue";
+        if (isEmpty()) {
+            throw new IllegalStateException("Cannot dequeue from an empty ready queue");
+        }
         return queue.poll();
     }
 
@@ -45,7 +49,8 @@ public class ReadyQueue {
     }
 
     /**
-     * Finds and removes the first process in the queue matching the given predicate.
+     * Finds and removes the first process in the queue matching the given
+     * predicate.
      * Maintains FIFO order for remaining elements.
      * Returns null if no matching process is found.
      */
@@ -62,7 +67,8 @@ public class ReadyQueue {
     }
 
     /**
-     * Finds the first process in the queue matching the given predicate without removing it.
+     * Finds the first process in the queue matching the given predicate without
+     * removing it.
      * Returns null if no matching process is found.
      */
     public Process findFirst(Predicate<Process> predicate) {

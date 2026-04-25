@@ -29,12 +29,13 @@ public class Scheduler {
     }
 
     /**
-     * Determines which in-memory ready processes should be scheduled onto which free processors.
+     * Determines which in-memory ready processes should be scheduled onto which
+     * free processors.
      * Returns a list of (Process, Processor) assignments.
      * Does NOT modify process/processor state — the caller is responsible for that.
      */
     public List<SchedulingDecision> scheduleReadyProcesses(List<Processor> processors,
-                                                           MemoryManager memoryManager) {
+            MemoryManager memoryManager) {
         List<SchedulingDecision> decisions = new ArrayList<>();
 
         boolean found = true;
@@ -62,7 +63,8 @@ public class Scheduler {
     }
 
     /**
-     * Finds the next process that needs to be loaded from disk (not currently in memory).
+     * Finds the next process that needs to be loaded from disk (not currently in
+     * memory).
      * Returns the process, or null if none found. Removes it from the ready queue.
      */
     public Process dequeueNextProcessNeedingLoad(MemoryManager memoryManager) {

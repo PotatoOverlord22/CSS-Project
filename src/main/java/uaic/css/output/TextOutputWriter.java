@@ -12,8 +12,12 @@ import java.util.List;
 public class TextOutputWriter {
 
     public void write(SimulationResult result, String filePath) {
-        assert result != null : "SimulationResult must not be null";
-        assert filePath != null && !filePath.isEmpty() : "File path must not be null or empty";
+        if (result == null) {
+            throw new IllegalArgumentException("SimulationResult must not be null");
+        }
+        if (filePath == null || filePath.isEmpty()) {
+            throw new IllegalArgumentException("File path must not be null or empty");
+        }
 
         try (PrintWriter writer = new PrintWriter(new FileWriter(filePath))) {
             writer.println("=== Process Scheduling Simulation Results ===");
@@ -24,7 +28,8 @@ public class TextOutputWriter {
             List<ExecutionLogEntry> sorted = new ArrayList<>(result.logEntries());
             sorted.sort((a, b) -> {
                 int cmp = Integer.compare(a.startTime(), b.startTime());
-                if (cmp != 0) return cmp;
+                if (cmp != 0)
+                    return cmp;
                 return Integer.compare(a.processorId(), b.processorId());
             });
 

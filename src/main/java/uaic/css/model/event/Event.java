@@ -5,9 +5,12 @@ import uaic.css.model.simulation.Processor;
 
 public record Event(int time, EventType type, Process process, Processor processor) implements Comparable<Event> {
     public Event {
-        assert time >= 0 : "Event time must be non-negative, got: " + time;
-        assert type != null : "Event type must not be null";
-
+        if (time < 0) {
+            throw new IllegalArgumentException("Event time must be non-negative, got: " + time);
+        }
+        if (type == null) {
+            throw new IllegalArgumentException("Event type must not be null");
+        }
     }
 
     public Event(int time, EventType type) {

@@ -14,7 +14,9 @@ public class InputParser {
     }
 
     public SimulationConfig parse(String filePath) {
-        assert filePath != null && !filePath.isEmpty() : "File path must not be null or empty";
+        if (filePath == null || filePath.isEmpty()) {
+            throw new IllegalArgumentException("File path must not be null or empty");
+        }
 
         try {
             return objectMapper.readValue(new File(filePath), SimulationConfig.class);

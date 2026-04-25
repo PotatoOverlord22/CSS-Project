@@ -57,16 +57,16 @@ public class GanttChartPanel extends JPanel {
 
     private void assignColors() {
         Color[] palette = {
-                new Color(66, 133, 244),   // Blue
-                new Color(219, 68, 55),    // Red
-                new Color(244, 180, 0),    // Yellow
-                new Color(15, 157, 88),    // Green
-                new Color(171, 71, 188),   // Purple
-                new Color(255, 112, 67),   // Orange
-                new Color(0, 172, 193),    // Cyan
-                new Color(124, 179, 66),   // Light Green
-                new Color(255, 167, 38),   // Amber
-                new Color(126, 87, 194),   // Deep Purple
+                new Color(66, 133, 244), // Blue
+                new Color(219, 68, 55), // Red
+                new Color(244, 180, 0), // Yellow
+                new Color(15, 157, 88), // Green
+                new Color(171, 71, 188), // Purple
+                new Color(255, 112, 67), // Orange
+                new Color(0, 172, 193), // Cyan
+                new Color(124, 179, 66), // Light Green
+                new Color(255, 167, 38), // Amber
+                new Color(126, 87, 194), // Deep Purple
         };
 
         int colorIndex = 0;
@@ -181,8 +181,10 @@ public class GanttChartPanel extends JPanel {
             switch (entry.type()) {
                 case CPU_BURST -> fillColor = baseColor;
                 case SYSCALL -> fillColor = baseColor.darker();
-                case DISK_LOAD -> fillColor = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(), 150);
-                case DISK_SAVE -> fillColor = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(), 100);
+                case DISK_LOAD ->
+                    fillColor = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(), 150);
+                case DISK_SAVE ->
+                    fillColor = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(), 100);
                 default -> fillColor = Color.LIGHT_GRAY;
             }
 

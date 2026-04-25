@@ -27,16 +27,17 @@ public class DiskController {
     /**
      * Initiates loading a process from disk into memory.
      * Handles eviction of LRU processes if needed.
-     * Adds log entries for all disk operations and schedules the DISK_TRANSFER_COMPLETE event.
+     * Adds log entries for all disk operations and schedules the
+     * DISK_TRANSFER_COMPLETE event.
      *
-     * @param process    the process to load
+     * @param process     the process to load
      * @param currentTime the current simulation time
-     * @param logEntries the log to append disk operation entries to
-     * @param eventQueue the event queue to schedule the completion event
+     * @param logEntries  the log to append disk operation entries to
+     * @param eventQueue  the event queue to schedule the completion event
      */
     public void initiateMemoryLoad(Process process, int currentTime,
-                                   List<ExecutionLogEntry> logEntries,
-                                   PriorityQueue<Event> eventQueue) {
+            List<ExecutionLogEntry> logEntries,
+            PriorityQueue<Event> eventQueue) {
         process.setState(ProcessState.LOADING);
 
         // Plan eviction if needed
@@ -54,8 +55,7 @@ public class DiskController {
                     ExecutionLogEntry.DISK_PROCESSOR_ID,
                     diskTime,
                     diskTime + transferTime,
-                    EntryType.DISK_SAVE
-            ));
+                    EntryType.DISK_SAVE));
 
             memoryManager.unloadProcess(toEvict);
             diskTime += transferTime;
@@ -69,8 +69,7 @@ public class DiskController {
                 ExecutionLogEntry.DISK_PROCESSOR_ID,
                 diskTime,
                 diskTime + loadTime,
-                EntryType.DISK_LOAD
-        ));
+                EntryType.DISK_LOAD));
 
         // Reserve memory space (commit happens when transfer completes)
         memoryManager.reserveSpace(process.getMemoryRequired());

@@ -17,8 +17,12 @@ public class MemoryManager {
     private final Map<Process, Integer> loadedProcesses; // Process -> lastUsedTime
 
     public MemoryManager(int totalMemory, int diskTransferRate) {
-        assert totalMemory > 0 : "Total memory must be positive, got: " + totalMemory;
-        assert diskTransferRate > 0 : "Disk transfer rate must be positive, got: " + diskTransferRate;
+        if (totalMemory <= 0) {
+            throw new IllegalArgumentException("Total memory must be positive, got: " + totalMemory);
+        }
+        if (diskTransferRate <= 0) {
+            throw new IllegalArgumentException("Disk transfer rate must be positive, got: " + diskTransferRate);
+        }
 
         this.totalMemory = totalMemory;
         this.diskTransferRate = diskTransferRate;
@@ -33,11 +37,14 @@ public class MemoryManager {
 
     /**
      * Reserves memory for a process that is being loaded from disk.
-     * The memory is not yet committed — call commitLoad() when the transfer completes.
+     * The memory is not yet committed — call commitLoad() when the transfer
+     * completes.
      */
     public void reserveSpace(int amount) {
-        assert getFreeMemory() >= amount
-                : "Not enough free memory to reserve. Free: " + getFreeMemory() + ", Requested: " + amount;
+        if (getFreeMemory() < amount) {
+            throw new IllegalStateException(
+                    "Not enough free memory to reserve. Free: " + getFreeMemory() + ", Requested: " + amount);
+        }
         reservedMemory += amount;
     }
 
@@ -45,7 +52,9 @@ public class MemoryManager {
      * Commits a previously reserved load — the process is now actually in memory.
      */
     public void commitLoad(Process process, int currentTime) {
-        assert !isLoaded(process) : "Process " + process.getName() + " is already loaded in memory";
+        if (isLoaded(process)) {
+            throw new IllegalStateException("Process " + process.getName() + " is already loaded in memory");
+        }
 
         reservedMemory -= process.getMemoryRequired();
         loadedProcesses.put(process, currentTime);
@@ -53,7 +62,9 @@ public class MemoryManager {
     }
 
     public void unloadProcess(Process process) {
-        assert isLoaded(process) : "Process " + process.getName() + " is not loaded in memory";
+        if (!isLoaded(process)) {
+            throw new IllegalStateException("Process " + process.getName() + " is not loaded in memory");
+        }
 
         loadedProcesses.remove(process);
         usedMemory -= process.getMemoryRequired();
@@ -75,9 +86,11 @@ public class MemoryManager {
     }
 
     /**
-     * Determines which processes need to be evicted to free enough memory for the given process.
+     * Determines which processes need to be evicted to free enough memory for the
+     * given process.
      * Skips processes that are currently RUNNING or LOADING (cannot be evicted).
-     * Returns the list of processes to evict (in LRU order) and the total time needed to save them to disk.
+     * Returns the list of processes to evict (in LRU order) and the total time
+     * needed to save them to disk.
      */
     public EvictionResult planEviction(Process processToLoad) {
         int memoryNeeded = processToLoad.getMemoryRequired() - getFreeMemory();
@@ -112,16 +125,19 @@ public class MemoryManager {
             totalSaveTime += calculateTransferTime(candidate);
         }
 
-        assert freedMemory >= memoryNeeded
-                : "Cannot free enough memory even by evicting all eligible processes. Needed: "
-                + memoryNeeded + ", Can free: " + freedMemory;
+        if (freedMemory < memoryNeeded) {
+            throw new IllegalStateException(
+                    "Cannot free enough memory even by evicting all eligible processes. Needed: "
+                            + memoryNeeded + ", Can free: " + freedMemory);
+        }
 
         return new EvictionResult(toEvict, totalSaveTime);
     }
 
     /**
      * Checks whether enough memory can be freed (by evicting eligible processes)
-     * to load the given process. This considers currently used memory, reserved memory,
+     * to load the given process. This considers currently used memory, reserved
+     * memory,
      * and only evictable processes (not RUNNING or LOADING).
      */
     public boolean canFreeEnoughMemory(Process processToLoad) {

@@ -34,8 +34,7 @@ public class ApplicationOrchestrator {
                     pc.name(),
                     pc.releaseTime(),
                     pc.memoryRequired(),
-                    pc.executionSequence()
-            ));
+                    pc.executionSequence()));
         }
 
         System.out.println("Configuration loaded:");

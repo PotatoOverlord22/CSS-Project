@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 public record SimulationConfig(int processors, int memorySize, int timeSlice, int systemProcessPeriod,
-                               int diskTransferRate, List<ProcessConfig> processes) {
+        int diskTransferRate, List<ProcessConfig> processes) {
     @JsonCreator
     public SimulationConfig(
             @JsonProperty("processors") int processors,
@@ -15,12 +15,31 @@ public record SimulationConfig(int processors, int memorySize, int timeSlice, in
             @JsonProperty("systemProcessPeriod") int systemProcessPeriod,
             @JsonProperty("diskTransferRate") int diskTransferRate,
             @JsonProperty("processes") List<ProcessConfig> processes) {
-        assert processors > 0 : "Number of processors must be positive, got: " + processors;
-        assert memorySize > 0 : "Memory size must be positive, got: " + memorySize;
-        assert timeSlice > 0 : "Time slice must be positive, got: " + timeSlice;
-        assert systemProcessPeriod > 0 : "System process period must be positive, got: " + systemProcessPeriod;
-        assert diskTransferRate > 0 : "Disk transfer rate must be positive, got: " + diskTransferRate;
-        assert processes != null && !processes.isEmpty() : "Process list must not be null or empty";
+        if (processors <= 0) {
+            throw new IllegalArgumentException("Number of processors must be positive, got: " + processors);
+        }
+        if (memorySize <= 0) {
+            throw new IllegalArgumentException("Memory size must be positive, got: " + memorySize);
+        }
+        if (timeSlice <= 0) {
+            throw new IllegalArgumentException("Time slice must be positive, got: " + timeSlice);
+        }
+        if (systemProcessPeriod <= 0) {
+            throw new IllegalArgumentException("System process period must be positive, got: " + systemProcessPeriod);
+        }
+        if (diskTransferRate <= 0) {
+            throw new IllegalArgumentException("Disk transfer rate must be positive, got: " + diskTransferRate);
+        }
+        if (processes == null || processes.isEmpty()) {
+            throw new IllegalArgumentException("Process list must not be null or empty");
+        }
+        for (ProcessConfig process : processes) {
+            if (process.memoryRequired() > memorySize) {
+                throw new IllegalArgumentException("Process '" + process.name()
+                        + "' requires " + process.memoryRequired()
+                        + " memory, but total system memory is only " + memorySize);
+            }
+        }
 
         this.processors = processors;
         this.memorySize = memorySize;
