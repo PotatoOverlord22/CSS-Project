@@ -1,0 +1,27 @@
+{
+  "processors": 2,
+  "memorySize": 100,
+  "timeSlice": 4,
+  "systemProcessPeriod": 20,
+  "diskTransferRate": 10,
+  "processes": [
+    {
+      "name": "P1",
+      "releaseTime": 0,
+      "memoryRequired": 30,
+      "executionSequence": [5, 2, 3, 4, 9, 4, 6]
+    },
+    {
+      "name": "P2",
+      "releaseTime": 2,
+      "memoryRequired": 50,
+      "executionSequence": [8, 3, 4]
+    },
+    {
+      "name": "P3",
+      "releaseTime": 5,
+      "memoryRequired": 40,
+      "executionSequence": [3, 1, 7, 2, 4]
+    }
+  ]
+}

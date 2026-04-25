@@ -1,0 +1,10 @@
+package uaic.css.model.event;
+
+public enum EventType {
+    PROCESS_RELEASE,
+    TIME_SLICE_EXPIRED,
+    BURST_COMPLETED,
+    SYSCALL_COMPLETED,
+    SYSTEM_PROCESS_RELEASE,
+    DISK_TRANSFER_COMPLETE
+}
