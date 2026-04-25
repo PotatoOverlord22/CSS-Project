@@ -2,6 +2,7 @@ package uaic.css.ui;
 
 import uaic.css.model.simulation.SimulationResult;
 import uaic.css.model.simulation.ExecutionLogEntry;
+import uaic.css.model.simulation.EntryType;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -14,7 +15,7 @@ import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class GanttChartPanel extends JPanel {
@@ -25,22 +26,30 @@ public class GanttChartPanel extends JPanel {
     private static final int TOP_MARGIN = 40;
     private static final int BOTTOM_MARGIN = 40;
     private static final int RIGHT_MARGIN = 20;
+    private static final int FINISHED_WIDTH = 4;
 
     private static final Font HEADER_FONT = new Font("SansSerif", Font.BOLD, 12);
     private static final Font LABEL_FONT = new Font("SansSerif", Font.PLAIN, 10);
     private static final Font TIME_FONT = new Font("SansSerif", Font.PLAIN, 9);
+    private static final Font FINISHED_FONT = new Font("SansSerif", Font.BOLD, 10);
+
+    private static final Color FINISHED_COLOR = new Color(80, 80, 80);
 
     private final SimulationResult result;
     private final int processorCount;
     private final Map<String, Color> processColors;
+    private final Map<String, Color> syscallColors; // SC(P1) → darker color of P1
+    private final int displayEndTime;
 
     public GanttChartPanel(SimulationResult result, int processorCount) {
         this.result = result;
         this.processorCount = processorCount;
-        this.processColors = new HashMap<>();
+        this.processColors = new LinkedHashMap<>();
+        this.syscallColors = new LinkedHashMap<>();
+        this.displayEndTime = result.totalTime() + FINISHED_WIDTH;
         assignColors();
 
-        int totalWidth = HEADER_WIDTH + (result.totalTime() + 2) * TIME_UNIT_WIDTH + RIGHT_MARGIN;
+        int totalWidth = HEADER_WIDTH + (displayEndTime + 2) * TIME_UNIT_WIDTH + RIGHT_MARGIN;
         int totalHeight = TOP_MARGIN + (processorCount + 1) * ROW_HEIGHT + BOTTOM_MARGIN;
         setPreferredSize(new Dimension(totalWidth, totalHeight));
         setBackground(Color.WHITE);
@@ -67,11 +76,17 @@ public class GanttChartPanel extends JPanel {
                 processColors.put(processName, palette[colorIndex % palette.length]);
                 colorIndex++;
             }
+            // Track syscall entries per process
+            if (entry.type() == EntryType.SYSCALL) {
+                String scKey = "SC(" + processName + ")";
+                if (!syscallColors.containsKey(scKey)) {
+                    syscallColors.put(scKey, processColors.get(processName).darker());
+                }
+            }
         }
     }
 
     private String extractProcessName(String label) {
-        // Extract process name from labels like "SysCall(P1)" → "P1", "Load P1" → "P1", "Save P1" → "P1"
         if (label.startsWith("SysCall(") && label.endsWith(")")) {
             return label.substring("SysCall(".length(), label.length() - 1);
         }
@@ -94,6 +109,7 @@ public class GanttChartPanel extends JPanel {
         drawRowLabels(g2);
         drawGrid(g2);
         drawEntries(g2);
+        drawFinishedEntries(g2);
         drawLegend(g2);
     }
 
@@ -101,14 +117,12 @@ public class GanttChartPanel extends JPanel {
         g2.setFont(TIME_FONT);
         g2.setColor(Color.DARK_GRAY);
 
-        int maxTime = result.totalTime();
-        for (int t = 0; t <= maxTime; t++) {
+        for (int t = 0; t <= displayEndTime; t++) {
             int x = HEADER_WIDTH + t * TIME_UNIT_WIDTH;
             int y = TOP_MARGIN - 5;
 
-            // Draw tick marks at every time unit, labels every 5
             g2.drawLine(x, y, x, y + 5);
-            if (t % 5 == 0 || t == maxTime) {
+            if (t % 5 == 0 || t == result.totalTime()) {
                 String label = String.valueOf(t);
                 FontMetrics fm = g2.getFontMetrics();
                 int labelWidth = fm.stringWidth(label);
@@ -133,16 +147,14 @@ public class GanttChartPanel extends JPanel {
     private void drawGrid(Graphics2D g2) {
         g2.setColor(new Color(230, 230, 230));
 
-        int totalRows = processorCount + 1; // processors + disk
+        int totalRows = processorCount + 1;
 
-        // Horizontal lines
         for (int i = 0; i <= totalRows; i++) {
             int y = TOP_MARGIN + i * ROW_HEIGHT;
             g2.drawLine(HEADER_WIDTH, y, getWidth() - RIGHT_MARGIN, y);
         }
 
-        // Vertical time lines
-        for (int t = 0; t <= result.totalTime(); t++) {
+        for (int t = 0; t <= displayEndTime; t++) {
             int x = HEADER_WIDTH + t * TIME_UNIT_WIDTH;
             g2.drawLine(x, TOP_MARGIN, x, TOP_MARGIN + totalRows * ROW_HEIGHT);
         }
@@ -152,7 +164,7 @@ public class GanttChartPanel extends JPanel {
         for (ExecutionLogEntry entry : result.logEntries()) {
             int row;
             if (entry.processorId() == ExecutionLogEntry.DISK_PROCESSOR_ID) {
-                row = processorCount; // disk row
+                row = processorCount;
             } else {
                 row = entry.processorId();
             }
@@ -162,11 +174,9 @@ public class GanttChartPanel extends JPanel {
             int width = (entry.endTime() - entry.startTime()) * TIME_UNIT_WIDTH;
             int height = ROW_HEIGHT - 6;
 
-            // Get color based on process name
             String processName = extractProcessName(entry.label());
             Color baseColor = processColors.getOrDefault(processName, Color.GRAY);
 
-            // Adjust color based on entry type
             Color fillColor;
             switch (entry.type()) {
                 case CPU_BURST -> fillColor = baseColor;
@@ -184,23 +194,61 @@ public class GanttChartPanel extends JPanel {
             g2.setColor(baseColor.darker());
             g2.drawRoundRect(x, y, width, height, 4, 4);
 
-            // Draw label text
+            // Draw label text — use short label for narrow blocks
             g2.setFont(LABEL_FONT);
             g2.setColor(Color.WHITE);
             FontMetrics fm = g2.getFontMetrics();
             String label = entry.label();
 
-            // Truncate label if too wide
-            while (fm.stringWidth(label) > width - 4 && label.length() > 1) {
-                label = label.substring(0, label.length() - 1);
+            // For syscalls, shorten to SC(Px) if full label doesn't fit
+            // Always show at least SC(Px) even if it overflows slightly
+            if (entry.type() == EntryType.SYSCALL && fm.stringWidth(label) > width - 4) {
+                label = "SC(" + processName + ")";
             }
 
-            if (fm.stringWidth(label) <= width - 4) {
+            // General truncation for non-syscall labels
+            if (entry.type() != EntryType.SYSCALL) {
+                while (fm.stringWidth(label) > width - 4 && label.length() > 1) {
+                    label = label.substring(0, label.length() - 1);
+                }
+            }
+
+            // Draw label — for syscalls, always draw SC(Px) even if it overflows
+            if (entry.type() == EntryType.SYSCALL || fm.stringWidth(label) <= width - 4) {
                 int textX = x + (width - fm.stringWidth(label)) / 2;
                 int textY = y + (height + fm.getAscent() - fm.getDescent()) / 2;
                 g2.drawString(label, textX, textY);
             }
         }
+    }
+
+    private void drawFinishedEntries(Graphics2D g2) {
+        int finishedStart = result.totalTime();
+
+        for (int i = 0; i < processorCount; i++) {
+            drawFinishedBlock(g2, i, finishedStart);
+        }
+        drawFinishedBlock(g2, processorCount, finishedStart);
+    }
+
+    private void drawFinishedBlock(Graphics2D g2, int row, int startTime) {
+        int x = HEADER_WIDTH + startTime * TIME_UNIT_WIDTH;
+        int y = TOP_MARGIN + row * ROW_HEIGHT + 3;
+        int width = FINISHED_WIDTH * TIME_UNIT_WIDTH;
+        int height = ROW_HEIGHT - 6;
+
+        g2.setColor(FINISHED_COLOR);
+        g2.fillRoundRect(x, y, width, height, 4, 4);
+        g2.setColor(FINISHED_COLOR.darker());
+        g2.drawRoundRect(x, y, width, height, 4, 4);
+
+        g2.setFont(FINISHED_FONT);
+        g2.setColor(Color.WHITE);
+        FontMetrics fm = g2.getFontMetrics();
+        String label = "FINISHED";
+        int textX = x + (width - fm.stringWidth(label)) / 2;
+        int textY = y + (height + fm.getAscent() - fm.getDescent()) / 2;
+        g2.drawString(label, textX, textY);
     }
 
     private void drawLegend(Graphics2D g2) {
@@ -214,6 +262,7 @@ public class GanttChartPanel extends JPanel {
         g2.setFont(LABEL_FONT);
         legendX += 60;
 
+        // Process colors (CPU bursts)
         for (Map.Entry<String, Color> entry : processColors.entrySet()) {
             g2.setColor(entry.getValue());
             g2.fillRect(legendX, legendY - 10, 15, 12);
@@ -222,6 +271,23 @@ public class GanttChartPanel extends JPanel {
             g2.drawString(entry.getKey(), legendX + 20, legendY);
             legendX += 70;
         }
+
+        // Per-process syscall colors
+        for (Map.Entry<String, Color> entry : syscallColors.entrySet()) {
+            g2.setColor(entry.getValue());
+            g2.fillRect(legendX, legendY - 10, 15, 12);
+            g2.setColor(Color.BLACK);
+            g2.drawRect(legendX, legendY - 10, 15, 12);
+            g2.drawString(entry.getKey(), legendX + 20, legendY);
+            legendX += 70;
+        }
+
+        // Finished legend entry
+        g2.setColor(FINISHED_COLOR);
+        g2.fillRect(legendX, legendY - 10, 15, 12);
+        g2.setColor(Color.BLACK);
+        g2.drawRect(legendX, legendY - 10, 15, 12);
+        g2.drawString("Finished", legendX + 20, legendY);
     }
 
     /**
