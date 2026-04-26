@@ -8,8 +8,9 @@ import uaic.css.model.process.ProcessState;
 import uaic.css.model.simulation.EntryType;
 import uaic.css.model.simulation.ExecutionLogEntry;
 
+import uaic.css.util.MinHeapPriorityQueue;
+
 import java.util.List;
-import java.util.PriorityQueue;
 
 /**
  * Manages disk I/O operations for virtual memory transfers.
@@ -37,7 +38,7 @@ public class DiskController {
      */
     public void initiateMemoryLoad(Process process, int currentTime,
             List<ExecutionLogEntry> logEntries,
-            PriorityQueue<Event> eventQueue) {
+            MinHeapPriorityQueue<Event> eventQueue) {
         process.setState(ProcessState.LOADING);
 
         // Plan eviction if needed
