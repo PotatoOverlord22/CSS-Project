@@ -10,15 +10,16 @@ import uaic.css.model.process.ProcessState;
 import uaic.css.model.simulation.*;
 import uaic.css.scheduler.Scheduler;
 
+import uaic.css.util.MinHeapPriorityQueue;
+
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.PriorityQueue;
 import java.util.Queue;
 
 public class EventDrivenSimulationEngine implements SimulationEngine {
 
-    private PriorityQueue<Event> eventQueue;
+    private MinHeapPriorityQueue<Event> eventQueue;
     private List<Processor> processors;
     private Scheduler scheduler;
     private MemoryManager memoryManager;
@@ -49,7 +50,7 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
 
     private void initialize(SimulationConfig config, List<Process> processes) {
         this.config = config;
-        this.eventQueue = new PriorityQueue<>();
+        this.eventQueue = new MinHeapPriorityQueue<>();
         this.processors = new ArrayList<>();
         this.memoryManager = new MemoryManager(config.memorySize(), config.diskTransferRate());
         this.diskController = new DiskController(memoryManager);
