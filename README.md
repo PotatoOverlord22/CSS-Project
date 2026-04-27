@@ -1,5 +1,7 @@
 # ScheduleSim — OS Process Scheduling Simulator
 
+**Team members:** Raul Tiron, Teodora Vlad, Cosmin Stan
+
 A discrete event-driven simulator for operating system process scheduling, implementing **preemptive Round-Robin** with **virtual memory (LRU replacement)**, **processor affinity**, and a **higher-priority system process** for syscall execution. Written in Java with no external logic libraries — only Jackson for JSON parsing and Swing for graphical output.
 
 ---
