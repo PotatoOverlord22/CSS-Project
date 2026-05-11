@@ -10,7 +10,14 @@ public class InputParser {
     private final ObjectMapper objectMapper;
 
     public InputParser() {
-        this.objectMapper = new ObjectMapper();
+        this(new ObjectMapper());
+    }
+
+    public InputParser(ObjectMapper objectMapper) {
+        if (objectMapper == null) {
+            throw new IllegalArgumentException("ObjectMapper must not be null");
+        }
+        this.objectMapper = objectMapper;
     }
 
     public SimulationConfig parse(String filePath) {

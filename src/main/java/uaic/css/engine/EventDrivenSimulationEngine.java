@@ -40,6 +40,41 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
     // All processes for termination checking
     private List<Process> allProcesses;
 
+    // Injected dependencies (null if using default construction)
+    private final Scheduler injectedScheduler;
+    private final MemoryManager injectedMemoryManager;
+    private final DiskController injectedDiskController;
+
+    /**
+     * Default constructor — creates its own collaborators during initialization.
+     */
+    public EventDrivenSimulationEngine() {
+        this.injectedScheduler = null;
+        this.injectedMemoryManager = null;
+        this.injectedDiskController = null;
+    }
+
+    /**
+     * Dependency-injection constructor
+     * When these are provided, initialize() will use them instead of creating new
+     * instances.
+     */
+    public EventDrivenSimulationEngine(Scheduler scheduler, MemoryManager memoryManager,
+            DiskController diskController) {
+        if (scheduler == null) {
+            throw new IllegalArgumentException("Scheduler must not be null");
+        }
+        if (memoryManager == null) {
+            throw new IllegalArgumentException("MemoryManager must not be null");
+        }
+        if (diskController == null) {
+            throw new IllegalArgumentException("DiskController must not be null");
+        }
+        this.injectedScheduler = scheduler;
+        this.injectedMemoryManager = memoryManager;
+        this.injectedDiskController = diskController;
+    }
+
     @Override
     public SimulationResult run(SimulationConfig config, List<Process> processes) {
         initialize(config, processes);
@@ -52,9 +87,18 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
         this.config = config;
         this.eventQueue = new MinHeapPriorityQueue<>();
         this.processors = new ArrayList<>();
-        this.memoryManager = new MemoryManager(config.memorySize(), config.diskTransferRate());
-        this.diskController = new DiskController(memoryManager);
-        this.scheduler = new Scheduler();
+
+        // Use injected dependencies if available, otherwise create defaults
+        this.memoryManager = injectedMemoryManager != null
+                ? injectedMemoryManager
+                : new MemoryManager(config.memorySize(), config.diskTransferRate());
+        this.diskController = injectedDiskController != null
+                ? injectedDiskController
+                : new DiskController(this.memoryManager);
+        this.scheduler = injectedScheduler != null
+                ? injectedScheduler
+                : new Scheduler();
+
         this.syscallQueue = new LinkedList<>();
         this.logEntries = new ArrayList<>();
         this.currentTime = 0;

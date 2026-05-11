@@ -11,6 +11,9 @@ import java.util.List;
 
 public class TextOutputWriter {
 
+    /**
+     * Writes simulation results to a file at the given path.
+     */
     public void write(SimulationResult result, String filePath) {
         if (result == null) {
             throw new IllegalArgumentException("SimulationResult must not be null");
@@ -19,82 +22,98 @@ public class TextOutputWriter {
             throw new IllegalArgumentException("File path must not be null or empty");
         }
 
-        try (PrintWriter writer = new PrintWriter(new FileWriter(filePath))) {
-            writer.println("=== Process Scheduling Simulation Results ===");
-            writer.println("Total simulation time: " + result.totalTime());
-            writer.println();
-
-            // Sort entries by start time for chronological output
-            List<ExecutionLogEntry> sorted = new ArrayList<>(result.logEntries());
-            sorted.sort((a, b) -> {
-                int cmp = Integer.compare(a.startTime(), b.startTime());
-                if (cmp != 0)
-                    return cmp;
-                return Integer.compare(a.processorId(), b.processorId());
-            });
-
-            // Chronological event log
-            writer.println("--- Chronological Log ---");
-            for (ExecutionLogEntry entry : sorted) {
-                String location;
-                if (entry.processorId() == ExecutionLogEntry.DISK_PROCESSOR_ID) {
-                    location = "Disk";
-                } else {
-                    location = "Processor " + entry.processorId();
-                }
-
-                writer.printf("[T=%d -> T=%d] %-25s on %-15s (%s)%n",
-                        entry.startTime(),
-                        entry.endTime(),
-                        entry.label(),
-                        location,
-                        entry.type());
-            }
-
-            writer.println();
-
-            // Per-processor timeline
-            writer.println("--- Per-Processor Timeline ---");
-            int maxProcessorId = -1;
-            for (ExecutionLogEntry entry : result.logEntries()) {
-                if (entry.processorId() > maxProcessorId) {
-                    maxProcessorId = entry.processorId();
-                }
-            }
-
-            for (int pid = 0; pid <= maxProcessorId; pid++) {
-                writer.println("Processor " + pid + ":");
-                List<ExecutionLogEntry> procEntries = result.getEntriesForProcessor(pid);
-                procEntries.sort((a, b) -> Integer.compare(a.startTime(), b.startTime()));
-                for (ExecutionLogEntry entry : procEntries) {
-                    writer.printf("  [%d-%d] %s (%s)%n",
-                            entry.startTime(),
-                            entry.endTime(),
-                            entry.label(),
-                            entry.type());
-                }
-                writer.println();
-            }
-
-            // Disk operations
-            List<ExecutionLogEntry> diskEntries = result.getDiskEntries();
-            if (!diskEntries.isEmpty()) {
-                writer.println("Disk Operations:");
-                diskEntries.sort((a, b) -> Integer.compare(a.startTime(), b.startTime()));
-                for (ExecutionLogEntry entry : diskEntries) {
-                    writer.printf("  [%d-%d] %s (%s)%n",
-                            entry.startTime(),
-                            entry.endTime(),
-                            entry.label(),
-                            entry.type());
-                }
-            }
-
-            writer.println();
-            writer.println("=== End of Simulation ===");
-
+        try (PrintWriter printWriter = new PrintWriter(new FileWriter(filePath))) {
+            write(result, printWriter);
         } catch (IOException e) {
             throw new RuntimeException("Failed to write output to: " + filePath, e);
         }
+    }
+
+    /**
+     * Writes simulation results to the given Writer.
+     */
+    public void write(SimulationResult result, java.io.Writer outputWriter) {
+        if (result == null) {
+            throw new IllegalArgumentException("SimulationResult must not be null");
+        }
+        if (outputWriter == null) {
+            throw new IllegalArgumentException("Writer must not be null");
+        }
+
+        PrintWriter writer = new PrintWriter(outputWriter);
+
+        writer.println("=== Process Scheduling Simulation Results ===");
+        writer.println("Total simulation time: " + result.totalTime());
+        writer.println();
+
+        // Sort entries by start time for chronological output
+        List<ExecutionLogEntry> sorted = new ArrayList<>(result.logEntries());
+        sorted.sort((a, b) -> {
+            int cmp = Integer.compare(a.startTime(), b.startTime());
+            if (cmp != 0)
+                return cmp;
+            return Integer.compare(a.processorId(), b.processorId());
+        });
+
+        // Chronological event log
+        writer.println("--- Chronological Log ---");
+        for (ExecutionLogEntry entry : sorted) {
+            String location;
+            if (entry.processorId() == ExecutionLogEntry.DISK_PROCESSOR_ID) {
+                location = "Disk";
+            } else {
+                location = "Processor " + entry.processorId();
+            }
+
+            writer.printf("[T=%d -> T=%d] %-25s on %-15s (%s)%n",
+                    entry.startTime(),
+                    entry.endTime(),
+                    entry.label(),
+                    location,
+                    entry.type());
+        }
+
+        writer.println();
+
+        // Per-processor timeline
+        writer.println("--- Per-Processor Timeline ---");
+        int maxProcessorId = -1;
+        for (ExecutionLogEntry entry : result.logEntries()) {
+            if (entry.processorId() > maxProcessorId) {
+                maxProcessorId = entry.processorId();
+            }
+        }
+
+        for (int pid = 0; pid <= maxProcessorId; pid++) {
+            writer.println("Processor " + pid + ":");
+            List<ExecutionLogEntry> procEntries = result.getEntriesForProcessor(pid);
+            procEntries.sort((a, b) -> Integer.compare(a.startTime(), b.startTime()));
+            for (ExecutionLogEntry entry : procEntries) {
+                writer.printf("  [%d-%d] %s (%s)%n",
+                        entry.startTime(),
+                        entry.endTime(),
+                        entry.label(),
+                        entry.type());
+            }
+            writer.println();
+        }
+
+        // Disk operations
+        List<ExecutionLogEntry> diskEntries = result.getDiskEntries();
+        if (!diskEntries.isEmpty()) {
+            writer.println("Disk Operations:");
+            diskEntries.sort((a, b) -> Integer.compare(a.startTime(), b.startTime()));
+            for (ExecutionLogEntry entry : diskEntries) {
+                writer.printf("  [%d-%d] %s (%s)%n",
+                        entry.startTime(),
+                        entry.endTime(),
+                        entry.label(),
+                        entry.type());
+            }
+        }
+
+        writer.println();
+        writer.println("=== End of Simulation ===");
+        writer.flush();
     }
 }

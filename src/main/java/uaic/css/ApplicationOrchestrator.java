@@ -15,11 +15,33 @@ import java.util.List;
 public class ApplicationOrchestrator {
 
     private final InputParser inputParser;
+    private final SimulationEngine simulationEngine;
     private final TextOutputWriter outputWriter;
 
+    /**
+     * Default constructor — creates its own dependencies.
+     */
     public ApplicationOrchestrator() {
-        this.inputParser = new InputParser();
-        this.outputWriter = new TextOutputWriter();
+        this(new InputParser(), new EventDrivenSimulationEngine(), new TextOutputWriter());
+    }
+
+    /**
+     * Dependency-injection constructor
+     */
+    public ApplicationOrchestrator(InputParser inputParser, SimulationEngine simulationEngine,
+            TextOutputWriter outputWriter) {
+        if (inputParser == null) {
+            throw new IllegalArgumentException("InputParser must not be null");
+        }
+        if (simulationEngine == null) {
+            throw new IllegalArgumentException("SimulationEngine must not be null");
+        }
+        if (outputWriter == null) {
+            throw new IllegalArgumentException("TextOutputWriter must not be null");
+        }
+        this.inputParser = inputParser;
+        this.simulationEngine = simulationEngine;
+        this.outputWriter = outputWriter;
     }
 
     public void run(String inputFilePath) {
@@ -47,8 +69,7 @@ public class ApplicationOrchestrator {
 
         // 3. Run simulation
         System.out.println("\nRunning simulation...");
-        SimulationEngine engine = new EventDrivenSimulationEngine();
-        SimulationResult result = engine.run(config, processes);
+        SimulationResult result = simulationEngine.run(config, processes);
         System.out.println("Simulation complete. Total time: " + result.totalTime());
 
         // 4. Write text output
