@@ -20,6 +20,13 @@ public class Scheduler {
         this.readyQueue = new ReadyQueue();
     }
 
+    /**
+     * Package-private constructor for testability — allows injecting a mock ReadyQueue.
+     */
+    Scheduler(ReadyQueue readyQueue) {
+        this.readyQueue = readyQueue;
+    }
+
     public void addToReadyQueue(Process process) {
         readyQueue.enqueue(process);
     }
