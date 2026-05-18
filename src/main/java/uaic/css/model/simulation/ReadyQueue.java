@@ -15,17 +15,23 @@ public class ReadyQueue {
     }
 
     public void enqueue(Process process) {
-        if (process == null) {
-            throw new IllegalArgumentException("Cannot enqueue a null process");
-        }
+        assert process != null : "Cannot enqueue a null process";
+        int sizeBefore = queue.size();
+
         queue.add(process);
+
+        assert queue.size() == sizeBefore + 1 : "Queue size must increase by 1 after enqueue";
     }
 
     public Process dequeue() {
-        if (isEmpty()) {
-            throw new IllegalStateException("Cannot dequeue from an empty ready queue");
-        }
-        return queue.poll();
+        assert !isEmpty() : "Cannot dequeue from an empty ready queue";
+        int sizeBefore = queue.size();
+
+        Process result = queue.poll();
+
+        assert result != null : "Dequeued process must not be null";
+        assert queue.size() == sizeBefore - 1 : "Queue size must decrease by 1 after dequeue";
+        return result;
     }
 
     public Process peek() {

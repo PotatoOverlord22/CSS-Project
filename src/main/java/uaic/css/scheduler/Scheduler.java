@@ -28,6 +28,7 @@ public class Scheduler {
     }
 
     public void addToReadyQueue(Process process) {
+        assert process != null : "Cannot add null process to ready queue";
         readyQueue.enqueue(process);
     }
 
@@ -43,19 +44,20 @@ public class Scheduler {
      */
     public List<SchedulingDecision> scheduleReadyProcesses(List<Processor> processors,
             MemoryManager memoryManager) {
+        assert processors != null : "Processors list must not be null";
+        assert memoryManager != null : "MemoryManager must not be null";
+
         List<SchedulingDecision> decisions = new ArrayList<>();
 
         boolean found = true;
         while (found) {
             found = false;
 
-            // Find the first in-memory process in the ready queue
             Process inMemoryProcess = readyQueue.findFirst(memoryManager::isLoaded);
             if (inMemoryProcess == null) {
                 break;
             }
 
-            // Find a free processor (with affinity preference)
             Processor bestProcessor = findBestProcessor(inMemoryProcess, processors);
             if (bestProcessor == null) {
                 break;
@@ -75,9 +77,12 @@ public class Scheduler {
      * Returns the process, or null if none found. Removes it from the ready queue.
      */
     public Process dequeueNextProcessNeedingLoad(MemoryManager memoryManager) {
+        assert memoryManager != null : "MemoryManager must not be null";
+
         Process toLoad = readyQueue.findFirst(p -> !memoryManager.isLoaded(p));
         if (toLoad != null && memoryManager.canFreeEnoughMemory(toLoad)) {
             readyQueue.remove(toLoad);
+            assert !readyQueue.contains(toLoad) : "Process must be removed from ready queue after dequeue";
             return toLoad;
         }
         return null;
@@ -89,6 +94,9 @@ public class Scheduler {
      * Returns null if no processor is free.
      */
     public Processor findBestProcessor(Process process, List<Processor> processors) {
+        assert process != null : "Process must not be null";
+        assert processors != null : "Processors list must not be null";
+
         Processor affinityProcessor = null;
         Processor anyFreeProcessor = null;
 
@@ -104,15 +112,20 @@ public class Scheduler {
             }
         }
 
-        return affinityProcessor != null ? affinityProcessor : anyFreeProcessor;
+        Processor result = affinityProcessor != null ? affinityProcessor : anyFreeProcessor;
+        assert result == null || result.isFree() : "Returned processor must be free";
+        return result;
     }
 
     /**
      * Finds any free processor (for the system process, which has no affinity).
      */
     public Processor findFreeProcessor(List<Processor> processors) {
+        assert processors != null : "Processors list must not be null";
+
         for (Processor processor : processors) {
             if (processor.isFree()) {
+                assert processor.isFree() : "Returned processor must be free";
                 return processor;
             }
         }

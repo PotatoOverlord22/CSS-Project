@@ -81,6 +81,7 @@ public class Process {
     }
 
     public void setState(ProcessState state) {
+        assert state != null : "Process state must not be null";
         this.state = state;
     }
 
@@ -93,6 +94,7 @@ public class Process {
     }
 
     public void setRemainingBurstTime(int remainingBurstTime) {
+        assert remainingBurstTime >= 0 : "Remaining burst time must be non-negative, got: " + remainingBurstTime;
         this.remainingBurstTime = remainingBurstTime;
     }
 
@@ -101,6 +103,7 @@ public class Process {
     }
 
     public void setLastProcessorId(int lastProcessorId) {
+        assert lastProcessorId >= 0 : "Last processor ID must be non-negative, got: " + lastProcessorId;
         this.lastProcessorId = lastProcessorId;
     }
 
@@ -121,16 +124,17 @@ public class Process {
     }
 
     public int getCurrentSyscallDuration() {
-        if (!hasSyscallAfterCurrentBurst()) {
-            throw new IllegalStateException("No syscall after current burst index " + currentBurstIndex);
-        }
+        assert hasSyscallAfterCurrentBurst() : "No syscall after current burst index " + currentBurstIndex;
         return syscallDurations.get(currentBurstIndex);
     }
 
     public void advanceToNextBurst() {
+        int previousIndex = currentBurstIndex;
         currentBurstIndex++;
+        assert currentBurstIndex == previousIndex + 1 : "Burst index must advance by exactly 1";
         if (hasMoreBursts()) {
             remainingBurstTime = cpuBursts.get(currentBurstIndex);
+            assert remainingBurstTime > 0 : "Remaining burst time must be positive after advancing";
         }
     }
 

@@ -85,16 +85,16 @@ class ProcessorTest {
     void systemProcessFlag_independentOfUserProcess() {
         Process process = new Process("P1", 0, 10, List.of(5));
         processor.setCurrentProcess(process);
-        processor.setBusyWithSystemProcess(true);
-
-        // Even if system process flag clears, user process still occupies
-        processor.setBusyWithSystemProcess(false);
         assertFalse(processor.isFree());
 
-        // Even if user process clears, system process flag still occupies
         processor.setCurrentProcess(null);
+        assertTrue(processor.isFree());
+
         processor.setBusyWithSystemProcess(true);
         assertFalse(processor.isFree());
+
+        processor.setBusyWithSystemProcess(false);
+        assertTrue(processor.isFree());
     }
 
     // ── Double-assign without release ──────────────────────────────────────────
@@ -104,12 +104,13 @@ class ProcessorTest {
     // the Processor itself should also guard against misuse at the setter level.
     // We may remove this test as there's reason for debate whether to keep the setter dumb or not
 
+    //failing test solved by assertion
     @Test
-    void setCurrentProcess_doubleAssignWithoutRelease_throwsIllegalStateException() {
+    void setCurrentProcess_doubleAssignWithoutRelease_throwsAssertionError() {
         Process p1 = new Process("P1", 0, 10, List.of(5));
         Process p2 = new Process("P2", 0, 10, List.of(5));
         processor.setCurrentProcess(p1);
-        assertThrows(IllegalStateException.class, () -> processor.setCurrentProcess(p2));
+        assertThrows(AssertionError.class, () -> processor.setCurrentProcess(p2));
     }
 
     // ── toString ───────────────────────────────────────────────────────────────

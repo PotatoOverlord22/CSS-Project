@@ -41,33 +41,40 @@ public class MemoryManager {
      * completes.
      */
     public void reserveSpace(int amount) {
-        if (getFreeMemory() < amount) {
-            throw new IllegalStateException(
-                    "Not enough free memory to reserve. Free: " + getFreeMemory() + ", Requested: " + amount);
-        }
+        assert amount > 0 : "Reserve amount must be positive, got: " + amount;
+        assert getFreeMemory() >= amount : "Not enough free memory to reserve. Free: " + getFreeMemory() + ", Requested: " + amount;
+
         reservedMemory += amount;
+
+        assert reservedMemory >= 0 : "Reserved memory must not be negative after reservation";
+        checkClassInvariant();
     }
 
     /**
      * Commits a previously reserved load — the process is now actually in memory.
      */
     public void commitLoad(Process process, int currentTime) {
-        if (isLoaded(process)) {
-            throw new IllegalStateException("Process " + process.getName() + " is already loaded in memory");
-        }
+        assert process != null : "Process must not be null";
+        assert !isLoaded(process) : "Process " + process.getName() + " is already loaded in memory";
+        assert currentTime >= 0 : "Current time must be non-negative";
 
         reservedMemory -= process.getMemoryRequired();
         loadedProcesses.put(process, currentTime);
         usedMemory += process.getMemoryRequired();
+
+        assert isLoaded(process) : "Process must be loaded after commitLoad";
+        checkClassInvariant();
     }
 
     public void unloadProcess(Process process) {
-        if (!isLoaded(process)) {
-            throw new IllegalStateException("Process " + process.getName() + " is not loaded in memory");
-        }
+        assert process != null : "Process must not be null";
+        assert isLoaded(process) : "Process " + process.getName() + " is not loaded in memory";
 
         loadedProcesses.remove(process);
         usedMemory -= process.getMemoryRequired();
+
+        assert !isLoaded(process) : "Process must not be loaded after unloadProcess";
+        checkClassInvariant();
     }
 
     public void updateLastUsedTime(Process process, int time) {
@@ -125,11 +132,8 @@ public class MemoryManager {
             totalSaveTime += calculateTransferTime(candidate);
         }
 
-        if (freedMemory < memoryNeeded) {
-            throw new IllegalStateException(
-                    "Cannot free enough memory even by evicting all eligible processes. Needed: "
-                            + memoryNeeded + ", Can free: " + freedMemory);
-        }
+        assert freedMemory >= memoryNeeded : "Cannot free enough memory even by evicting all eligible processes. Needed: "
+                + memoryNeeded + ", Can free: " + freedMemory;
 
         return new EvictionResult(toEvict, totalSaveTime);
     }
@@ -163,5 +167,11 @@ public class MemoryManager {
 
     public int getUsedMemory() {
         return usedMemory;
+    }
+
+    private void checkClassInvariant() {
+        assert usedMemory >= 0 : "Used memory must not be negative: " + usedMemory;
+        assert reservedMemory >= 0 : "Reserved memory must not be negative: " + reservedMemory;
+        assert usedMemory + reservedMemory <= totalMemory : "Used (" + usedMemory + ") + reserved (" + reservedMemory + ") exceeds total memory (" + totalMemory + ")";
     }
 }

@@ -22,7 +22,10 @@ public class Processor {
     }
 
     public void setCurrentProcess(Process process) {
+        assert process == null || this.currentProcess == null
+                : "Processor " + id + " already has a process assigned; release it before assigning a new one";
         this.currentProcess = process;
+        checkClassInvariant();
     }
 
     public boolean isFree() {
@@ -35,10 +38,15 @@ public class Processor {
 
     public void setBusyWithSystemProcess(boolean busy) {
         this.busyWithSystemProcess = busy;
+        checkClassInvariant();
     }
 
     @Override
     public String toString() {
         return "Processor " + id;
+    }
+
+    private void checkClassInvariant() {
+        assert !(currentProcess != null && busyWithSystemProcess) : "Processor " + id + " cannot run a user process and a system process simultaneously";
     }
 }

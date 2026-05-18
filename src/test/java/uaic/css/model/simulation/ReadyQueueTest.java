@@ -20,15 +20,15 @@ class ReadyQueueTest {
     // ── enqueue(null) ──────────────────────────────────────────────────────────
 
     @Test
-    void enqueue_null_throwsIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () -> queue.enqueue(null));
+    void enqueue_null_throwsAssertionError() {
+        assertThrows(AssertionError.class, () -> queue.enqueue(null));
     }
 
     // ── dequeue() on empty ─────────────────────────────────────────────────────
 
     @Test
-    void dequeue_emptyQueue_throwsIllegalStateException() {
-        assertThrows(IllegalStateException.class, () -> queue.dequeue());
+    void dequeue_emptyQueue_throwsAssertionError() {
+        assertThrows(AssertionError.class, () -> queue.dequeue());
     }
 
     // ── FIFO order ─────────────────────────────────────────────────────────────

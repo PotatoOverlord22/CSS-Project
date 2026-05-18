@@ -92,9 +92,9 @@ class ProcessTest {
     // ── getCurrentSyscallDuration when no syscall ──────────────────────────────
 
     @Test
-    void getCurrentSyscallDuration_noSyscallAfterCurrentBurst_throwsIllegalStateException() {
+    void getCurrentSyscallDuration_noSyscallAfterCurrentBurst_throwsAssertionError() {
         Process p = new Process("P1", 0, 10, List.of(5));
-        assertThrows(IllegalStateException.class, p::getCurrentSyscallDuration);
+        assertThrows(AssertionError.class, p::getCurrentSyscallDuration);
     }
 
     // ── advanceToNextBurst ─────────────────────────────────────────────────────
@@ -127,10 +127,11 @@ class ProcessTest {
 
     // ── setRemainingBurstTime with negative ────────────────────────────────────
 
+    //failing test solved by assertion
     @Test
-    void setRemainingBurstTime_negativeValue_throwsIllegalArgumentException() {
+    void setRemainingBurstTime_negativeValue_throwsAssertionError() {
         Process p = new Process("P1", 0, 10, List.of(5));
-        assertThrows(IllegalArgumentException.class, () -> p.setRemainingBurstTime(-1));
+        assertThrows(AssertionError.class, () -> p.setRemainingBurstTime(-1));
     }
 
     // ── equals and hashCode ────────────────────────────────────────────────────

@@ -77,9 +77,16 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
 
     @Override
     public SimulationResult run(SimulationConfig config, List<Process> processes) {
+        assert config != null : "SimulationConfig must not be null";
+        assert processes != null : "Process list must not be null";
+
         initialize(config, processes);
         seedInitialEvents(processes, config);
         runEventLoop();
+
+        assert lastMeaningfulTime >= 0 : "Last meaningful time must be non-negative";
+        assert logEntries != null : "Log entries must not be null after simulation";
+
         return new SimulationResult(logEntries, lastMeaningfulTime);
     }
 
@@ -163,9 +170,7 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
 
     private void handleProcessRelease(Event event) {
         Process process = event.process();
-        if (process == null) {
-            throw new IllegalStateException("PROCESS_RELEASE event must have an associated process");
-        }
+        assert process != null : "PROCESS_RELEASE event must have an associated process";
 
         process.setState(ProcessState.READY);
         scheduler.addToReadyQueue(process);
@@ -175,12 +180,8 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
     private void handleTimeSliceExpired(Event event) {
         Process process = event.process();
         Processor processor = event.processor();
-        if (process == null) {
-            throw new IllegalStateException("TIME_SLICE_EXPIRED event must have an associated process");
-        }
-        if (processor == null) {
-            throw new IllegalStateException("TIME_SLICE_EXPIRED event must have an associated processor");
-        }
+        assert process != null : "TIME_SLICE_EXPIRED event must have an associated process";
+        assert processor != null : "TIME_SLICE_EXPIRED event must have an associated processor";
 
         // Only handle if the process is still running on this processor
         if (process.getState() != ProcessState.RUNNING || processor.getCurrentProcess() != process) {
@@ -198,12 +199,8 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
     private void handleBurstCompleted(Event event) {
         Process process = event.process();
         Processor processor = event.processor();
-        if (process == null) {
-            throw new IllegalStateException("BURST_COMPLETED event must have an associated process");
-        }
-        if (processor == null) {
-            throw new IllegalStateException("BURST_COMPLETED event must have an associated processor");
-        }
+        assert process != null : "BURST_COMPLETED event must have an associated process";
+        assert processor != null : "BURST_COMPLETED event must have an associated processor";
 
         // Only handle if the process is still running on this processor
         if (process.getState() != ProcessState.RUNNING || processor.getCurrentProcess() != process) {
@@ -230,9 +227,7 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
 
     private void handleSyscallCompleted(Event event) {
         Process process = event.process();
-        if (process == null) {
-            throw new IllegalStateException("SYSCALL_COMPLETED event must have an associated process");
-        }
+        assert process != null : "SYSCALL_COMPLETED event must have an associated process";
 
         updateLastMeaningfulTime();
 
@@ -263,9 +258,7 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
 
     private void handleSystemProcessCompleted(Event event) {
         Processor processor = event.processor();
-        if (processor == null) {
-            throw new IllegalStateException("SYSTEM_PROCESS_COMPLETED event must have an associated processor");
-        }
+        assert processor != null : "SYSTEM_PROCESS_COMPLETED event must have an associated processor";
 
         processor.setBusyWithSystemProcess(false);
         trySchedule();
@@ -273,9 +266,7 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
 
     private void handleDiskTransferComplete(Event event) {
         Process process = event.process();
-        if (process == null) {
-            throw new IllegalStateException("DISK_TRANSFER_COMPLETE event must have an associated process");
-        }
+        assert process != null : "DISK_TRANSFER_COMPLETE event must have an associated process";
 
         memoryManager.commitLoad(process, currentTime);
         process.setState(ProcessState.READY);
@@ -356,10 +347,10 @@ public class EventDrivenSimulationEngine implements SimulationEngine {
     // ========== Process Execution ==========
 
     private void dispatchProcessOnProcessor(Process process, Processor processor) {
-        if (!processor.isFree()) {
-            throw new IllegalStateException("Processor " + processor.getId()
-                    + " must be free when dispatching process " + process.getName());
-        }
+        assert process != null : "Cannot dispatch a null process";
+        assert processor != null : "Cannot dispatch to a null processor";
+        assert processor.isFree() : "Processor " + processor.getId()
+                + " must be free when dispatching process " + process.getName();
 
         process.setState(ProcessState.RUNNING);
         processor.setCurrentProcess(process);

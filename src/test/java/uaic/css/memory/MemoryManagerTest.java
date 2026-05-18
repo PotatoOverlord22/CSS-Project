@@ -54,8 +54,8 @@ class MemoryManagerTest {
     // ── reserveSpace ───────────────────────────────────────────────────────────
 
     @Test
-    void reserveSpace_amountGreaterThanFree_throwsIllegalStateException() {
-        assertThrows(IllegalStateException.class, () -> memoryManager.reserveSpace(101));
+    void reserveSpace_amountGreaterThanFree_throwsAssertionError() {
+        assertThrows(AssertionError.class, () -> memoryManager.reserveSpace(101));
     }
 
     @Test
@@ -87,20 +87,20 @@ class MemoryManagerTest {
     }
 
     @Test
-    void commitLoad_alreadyLoaded_throwsIllegalStateException() {
+    void commitLoad_alreadyLoaded_throwsAssertionError() {
         Process process = mockProcess("P1", 30);
         memoryManager.reserveSpace(30);
         memoryManager.commitLoad(process, 10);
 
-        assertThrows(IllegalStateException.class, () -> memoryManager.commitLoad(process, 20));
+        assertThrows(AssertionError.class, () -> memoryManager.commitLoad(process, 20));
     }
 
     // ── unloadProcess ──────────────────────────────────────────────────────────
 
     @Test
-    void unloadProcess_notLoaded_throwsIllegalStateException() {
+    void unloadProcess_notLoaded_throwsAssertionError() {
         Process process = mockProcess("P1", 30);
-        assertThrows(IllegalStateException.class, () -> memoryManager.unloadProcess(process));
+        assertThrows(AssertionError.class, () -> memoryManager.unloadProcess(process));
     }
 
     @Test
@@ -204,15 +204,14 @@ class MemoryManagerTest {
     // ── planEviction: all candidates RUNNING or LOADING ────────────────────────
 
     @Test
-    void planEviction_allCandidatesRunningOrLoading_throwsIllegalStateException() {
+    void planEviction_allCandidatesRunningOrLoading_throwsAssertionError() {
         Process running = mockProcess("PRunning", 80);
         when(running.getState()).thenReturn(ProcessState.RUNNING);
         memoryManager.reserveSpace(80);
         memoryManager.commitLoad(running, 0);
-        // Free = 20
 
         Process toLoad = mockProcess("PNew", 30);
-        assertThrows(IllegalStateException.class, () -> memoryManager.planEviction(toLoad));
+        assertThrows(AssertionError.class, () -> memoryManager.planEviction(toLoad));
     }
 
     // ── planEviction: mixed — evict only eligible, skip RUNNING/LOADING ────────

@@ -39,12 +39,17 @@ public class DiskController {
     public void initiateMemoryLoad(Process process, int currentTime,
             List<ExecutionLogEntry> logEntries,
             MinHeapPriorityQueue<Event> eventQueue) {
+        assert process != null : "Process must not be null";
+        assert currentTime >= 0 : "Current time must be non-negative";
+        assert logEntries != null : "Log entries list must not be null";
+        assert eventQueue != null : "Event queue must not be null";
+        assert !memoryManager.isLoaded(process) : "Process " + process.getName() + " is already loaded in memory";
+
+        int diskBusyUntilBefore = diskBusyUntil;
         process.setState(ProcessState.LOADING);
 
-        // Plan eviction if needed
         EvictionResult eviction = memoryManager.planEviction(process);
 
-        // All disk operations go through the single disk — sequential
         int diskTime = Math.max(currentTime, diskBusyUntil);
 
         // Evict LRU processes (save to disk sequentially)
@@ -78,7 +83,10 @@ public class DiskController {
         int loadEndTime = diskTime + loadTime;
         diskBusyUntil = loadEndTime;
 
-        // Schedule disk transfer completion
+        assert diskBusyUntil > diskBusyUntilBefore || diskBusyUntil > currentTime
+                : "diskBusyUntil must advance after initiating a memory load";
+        assert loadEndTime > currentTime : "Load end time must be after current time";
+
         eventQueue.add(new Event(loadEndTime, EventType.DISK_TRANSFER_COMPLETE, process));
     }
 }
